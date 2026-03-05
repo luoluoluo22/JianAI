@@ -248,22 +248,23 @@ class TestAtomicDownloads:
 
 
 class TestHuggingFaceInternals:
-    """Guard tests for huggingface_hub internals we rely on.
+    """Guard tests for huggingface_hub public API we rely on.
 
-    We rely on the public ``tqdm_class`` parameter on ``hf_hub_download``
-    for progress tracking (used by both HTTP and Xet downloads).
+    We pass ``tqdm_class`` to both ``hf_hub_download`` and
+    ``snapshot_download`` for progress tracking.
 
-    If this test breaks after a huggingface_hub upgrade, the public API
+    If these tests break after a huggingface_hub upgrade, the public API
     has changed. Find an alternative approach and raise to a developer.
     """
 
     def test_hf_hub_download_accepts_tqdm_class(self):
         sig = inspect.signature(hf_hub_download)
-        if "tqdm_class" in sig.parameters:
-            assert "tqdm_class" in sig.parameters
-            return
+        assert "tqdm_class" in sig.parameters, (
+            "hf_hub_download no longer accepts tqdm_class — progress tracking is broken"
+        )
 
+    def test_snapshot_download_accepts_tqdm_class(self):
         sig = inspect.signature(snapshot_download)
         assert "tqdm_class" in sig.parameters, (
-            "hf_hub_download and snapshot_download no longer accept tqdm_class — progress tracking is broken"
+            "snapshot_download no longer accepts tqdm_class — progress tracking is broken"
         )

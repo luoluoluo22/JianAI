@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-import inspect
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -47,8 +46,6 @@ def _make_progress_tqdm_class(callback: Callable[[int, int], None]) -> type:
 class HuggingFaceDownloader:
     """Wraps huggingface_hub download functions."""
 
-    _HF_HUB_DOWNLOAD_SUPPORTS_TQDM = "tqdm_class" in inspect.signature(hf_hub_download).parameters  # type: ignore[reportUnknownArgumentType]
-
     def download_file(
         self,
         repo_id: str,
@@ -62,10 +59,10 @@ class HuggingFaceDownloader:
             "filename": filename,
             "local_dir": local_dir,
         }
-        if tqdm_class is not None and self._HF_HUB_DOWNLOAD_SUPPORTS_TQDM:
+        if tqdm_class is not None:
             download_kwargs["tqdm_class"] = tqdm_class
-        path: str = hf_hub_download(**download_kwargs)
-        return Path(path)
+        path: str = hf_hub_download(**download_kwargs)  # type: ignore[reportUnknownVariableType]
+        return Path(path)  # type: ignore[reportUnknownArgumentType]
 
     def download_snapshot(
         self,
@@ -80,5 +77,5 @@ class HuggingFaceDownloader:
         }
         if tqdm_class is not None:
             download_kwargs["tqdm_class"] = tqdm_class
-        path: str = snapshot_download(**download_kwargs)
-        return Path(path)
+        path: str = snapshot_download(**download_kwargs)  # type: ignore[reportUnknownVariableType]
+        return Path(path)  # type: ignore[reportUnknownArgumentType]
