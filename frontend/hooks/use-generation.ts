@@ -61,7 +61,7 @@ function getImageDimensions(settings: GenerationSettings): { width: number; heig
 }
 
 // Map phase to user-friendly message
-function getPhaseMessage(phase: string, _currentStep: number | null, totalSteps: number | null): string {
+function getPhaseMessage(phase: string): string {
   switch (phase) {
     case 'validating_request':
       return 'Validating request...'
@@ -74,7 +74,7 @@ function getPhaseMessage(phase: string, _currentStep: number | null, totalSteps:
     case 'encoding_text':
       return 'Encoding prompt...'
     case 'inference':
-      return typeof totalSteps === 'number' && totalSteps > 0 ? `Generating (${totalSteps} steps)...` : 'Generating...'
+      return 'Generating...'
     case 'downloading_output':
       return 'Downloading output...'
     case 'decoding':
@@ -163,7 +163,7 @@ export function useGeneration(): UseGenerationReturn {
             if (!shouldApplyPollingUpdates) return
             
             let displayProgress = data.progress
-            let statusMessage = getPhaseMessage(data.phase, data.currentStep, data.totalSteps)
+            let statusMessage = getPhaseMessage(data.phase)
             
             // Time-based interpolation during inference phase
             if (data.phase === 'inference') {
