@@ -1,4 +1,4 @@
-// Project and Asset types for LTX Desktop
+// Project and asset types for JianAI
 
 // Parameters needed to regenerate a shot
 export interface GenerationParams {

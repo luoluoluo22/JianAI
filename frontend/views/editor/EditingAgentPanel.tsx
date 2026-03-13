@@ -18,6 +18,7 @@ import {
   buildErrorDebugEntry,
   buildInterpretationDebugEntry,
   buildRequestDebugEntry,
+  buildUiContextMenuDebugEntry,
   persistEditingAgentDebugEntry,
   summarizeActions,
   type EditingAgentDebugEntry,
@@ -27,6 +28,15 @@ interface AgentMessage {
   id: string
   role: 'assistant' | 'user'
   text: string
+}
+
+interface TextContextMenuState {
+  x: number
+  y: number
+  canCut: boolean
+  canCopy: boolean
+  canPaste: boolean
+  target: HTMLTextAreaElement | HTMLInputElement | null
 }
 
 interface EditingAgentPanelProps {
@@ -76,6 +86,7 @@ export function EditingAgentPanel({
   const [showDebugLog, setShowDebugLog] = useState(false)
   const [debugLogPath, setDebugLogPath] = useState('')
   const [debugEntries, setDebugEntries] = useState<EditingAgentDebugEntry[]>([])
+  const [textContextMenu, setTextContextMenu] = useState<TextContextMenuState | null>(null)
   const [llmConfig, setLlmConfig] = useState<EditingAgentLlmConfig>(() => {
     if (typeof window === 'undefined') {
       return DEFAULT_EDITING_AGENT_LLM_CONFIG
@@ -124,6 +135,17 @@ export function EditingAgentPanel({
 
     void loadDebugLog()
   }, [showDebugLog, isRunning])
+
+  useEffect(() => {
+    if (!textContextMenu) return
+    const close = () => setTextContextMenu(null)
+    window.addEventListener('click', close)
+    window.addEventListener('blur', close)
+    return () => {
+      window.removeEventListener('click', close)
+      window.removeEventListener('blur', close)
+    }
+  }, [textContextMenu])
 
   const context: EditingAgentContext = {
     clips,
@@ -243,10 +265,167 @@ export function EditingAgentPanel({
     }
   }
 
+  const handleTextContextMenu = async (
+    event: React.MouseEvent<HTMLElement | HTMLTextAreaElement | HTMLInputElement>,
+  ) => {
+    event.stopPropagation()
+
+    const selection = window.getSelection()?.toString() ?? ''
+    const target = event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement
+      ? event.target
+      : null
+
+    const hasTargetSelection = target
+      ? target.selectionStart !== null && target.selectionEnd !== null && target.selectionStart !== target.selectionEnd
+      : false
+
+    const canCopy = selection.trim().length > 0 || hasTargetSelection
+    const canCut = Boolean(target && hasTargetSelection && !target.readOnly && !target.disabled)
+
+    let canPaste = false
+    if (target && !target.readOnly && !target.disabled) {
+      try {
+        const clipboardText = await navigator.clipboard.readText()
+        canPaste = clipboardText.length > 0
+      } catch {
+        canPaste = true
+      }
+    }
+
+    await persistEditingAgentDebugEntry(buildUiContextMenuDebugEntry(
+      target?.value?.slice(target.selectionStart ?? 0, target.selectionEnd ?? 0) || selection || '[no-selection]',
+      {
+        source: 'handleTextContextMenu',
+        targetTagName: event.target instanceof HTMLElement ? event.target.tagName : 'unknown',
+        isInputTarget: Boolean(target),
+        selectionLength: selection.length,
+        hasTargetSelection,
+        canCopy,
+        canCut,
+        canPaste,
+        x: event.clientX,
+        y: event.clientY,
+      },
+    ))
+
+    if (!canCopy && !canCut && !canPaste) {
+      return
+    }
+
+    event.preventDefault()
+    await persistEditingAgentDebugEntry(buildUiContextMenuDebugEntry(
+      target?.value?.slice(target.selectionStart ?? 0, target.selectionEnd ?? 0) || selection || '[menu-open]',
+      {
+        source: 'setTextContextMenu',
+        opened: true,
+        canCopy,
+        canCut,
+        canPaste,
+        x: event.clientX,
+        y: event.clientY,
+      },
+    ))
+    setTextContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      canCut,
+      canCopy,
+      canPaste,
+      target,
+    })
+  }
+
+  const copySelection = async () => {
+    if (!textContextMenu?.canCopy) return
+
+    const target = textContextMenu.target
+    let copiedText = ''
+    if (target && target.selectionStart !== null && target.selectionEnd !== null && target.selectionStart !== target.selectionEnd) {
+      copiedText = target.value.slice(target.selectionStart, target.selectionEnd)
+      await navigator.clipboard.writeText(copiedText)
+    } else {
+      copiedText = window.getSelection()?.toString() ?? ''
+      if (!copiedText) return
+      await navigator.clipboard.writeText(copiedText)
+    }
+    await persistEditingAgentDebugEntry(buildUiContextMenuDebugEntry(
+      copiedText || '[copy]',
+      {
+        source: 'copySelection',
+        copiedLength: copiedText.length,
+      },
+    ))
+    setTextContextMenu(null)
+  }
+
+  const cutSelection = async () => {
+    const target = textContextMenu?.target
+    if (!textContextMenu?.canCut || !target || target.selectionStart === null || target.selectionEnd === null) return
+
+    const start = target.selectionStart
+    const end = target.selectionEnd
+    const selectedText = target.value.slice(start, end)
+    await navigator.clipboard.writeText(selectedText)
+    await persistEditingAgentDebugEntry(buildUiContextMenuDebugEntry(
+      selectedText || '[cut]',
+      {
+        source: 'cutSelection',
+        cutLength: selectedText.length,
+      },
+    ))
+
+    const nextValue = target.value.slice(0, start) + target.value.slice(end)
+    setInput(nextValue)
+
+    requestAnimationFrame(() => {
+      target.focus()
+      target.setSelectionRange(start, start)
+    })
+    setTextContextMenu(null)
+  }
+
+  const pasteClipboard = async () => {
+    const target = textContextMenu?.target
+    if (!textContextMenu?.canPaste || !target || target.readOnly || target.disabled) return
+
+    let clipboardText = ''
+    try {
+      clipboardText = await navigator.clipboard.readText()
+    } catch {
+      clipboardText = ''
+    }
+    if (!clipboardText) {
+      setTextContextMenu(null)
+      return
+    }
+
+    const start = target.selectionStart ?? target.value.length
+    const end = target.selectionEnd ?? target.value.length
+    const nextValue = target.value.slice(0, start) + clipboardText + target.value.slice(end)
+    await persistEditingAgentDebugEntry(buildUiContextMenuDebugEntry(
+      clipboardText || '[paste]',
+      {
+        source: 'pasteClipboard',
+        pastedLength: clipboardText.length,
+      },
+    ))
+    setInput(nextValue)
+
+    requestAnimationFrame(() => {
+      const caret = start + clipboardText.length
+      target.focus()
+      target.setSelectionRange(caret, caret)
+    })
+    setTextContextMenu(null)
+  }
+
   return (
     <div
       className="bg-zinc-950 border-l border-zinc-800 flex flex-col"
       style={{ width: rightPanelWidth }}
+      onContextMenu={(e) => {
+        e.stopPropagation()
+      }}
     >
       <div className="border-b border-zinc-800 px-4 py-3">
         <div className="flex items-center gap-2">
@@ -334,7 +513,11 @@ export function EditingAgentPanel({
                 <div className="text-[11px] text-zinc-500">暂无调试日志</div>
               ) : (
                 debugEntries.map((entry, index) => (
-                  <div key={`${entry.timestamp}-${index}`} className="rounded-md border border-zinc-800 bg-zinc-950 p-2 text-[10px] leading-4 text-zinc-300">
+                  <div
+                    key={`${entry.timestamp}-${index}`}
+                    className="rounded-md border border-zinc-800 bg-zinc-950 p-2 text-[10px] leading-4 text-zinc-300"
+                    onContextMenu={(e) => { void handleTextContextMenu(e) }}
+                  >
                     <div className="mb-1 flex items-center justify-between gap-2 text-zinc-500">
                       <span>{entry.phase}</span>
                       <span>{entry.timestamp}</span>
@@ -376,6 +559,7 @@ export function EditingAgentPanel({
                 ? 'border-zinc-800 bg-zinc-900 text-zinc-200'
                 : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
             } select-text cursor-text`}
+            onContextMenu={(e) => { void handleTextContextMenu(e) }}
           >
             <div className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">
               {message.role === 'assistant' ? 'Agent' : 'You'}
@@ -389,6 +573,7 @@ export function EditingAgentPanel({
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onContextMenu={(e) => { void handleTextContextMenu(e) }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
@@ -412,6 +597,39 @@ export function EditingAgentPanel({
           </button>
         </div>
       </div>
+
+      {textContextMenu && (
+        <div
+          className="fixed z-[10020] min-w-[140px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 py-1 shadow-2xl"
+          style={{ left: textContextMenu.x, top: textContextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => { void cutSelection() }}
+            disabled={!textContextMenu.canCut}
+            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-600"
+          >
+            <span>剪切</span>
+            <span className="text-xs text-zinc-500">Ctrl+X</span>
+          </button>
+          <button
+            onClick={() => { void copySelection() }}
+            disabled={!textContextMenu.canCopy}
+            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-600"
+          >
+            <span>复制</span>
+            <span className="text-xs text-zinc-500">Ctrl+C</span>
+          </button>
+          <button
+            onClick={() => { void pasteClipboard() }}
+            disabled={!textContextMenu.canPaste}
+            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-600"
+          >
+            <span>粘贴</span>
+            <span className="text-xs text-zinc-500">Ctrl+V</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

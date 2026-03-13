@@ -1,6 +1,6 @@
 # Telemetry
 
-LTX Desktop collects minimal, anonymous telemetry to help the team understand how the app is used and prioritize development.
+剪艾 JianAI collects minimal, anonymous telemetry to help the team understand how the app is used and prioritize development.
 No personal information, generated content, prompts, file paths, or IP-derived location data is collected or stored.
 
 ## Opting out
@@ -15,9 +15,9 @@ To disable telemetry before the first launch, create an `app_state.json` file in
 
 App data folder locations:
 
-- **Windows:** `%LOCALAPPDATA%\LTXDesktop\`
-- **macOS:** `~/Library/Application Support/LTXDesktop/`
-- **Linux:** `$XDG_DATA_HOME/LTXDesktop/` (default: `~/.local/share/LTXDesktop/`)
+- **Windows:** `%LOCALAPPDATA%\JianAI\`
+- **macOS:** `~/Library/Application Support/JianAI/`
+- **Linux:** `$XDG_DATA_HOME/JianAI/` (default: `~/.local/share/JianAI/`)
 
 Your preference is respected immediately — no restart required.
 

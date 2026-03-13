@@ -4,7 +4,7 @@ import type { EditingAgentAction, EditingAgentResult } from './editing-agent'
 
 export interface EditingAgentDebugEntry {
   timestamp: string
-  phase: 'request' | 'llm_result' | 'fallback_result' | 'apply_result' | 'error'
+  phase: 'request' | 'llm_result' | 'fallback_result' | 'apply_result' | 'error' | 'ui_context_menu'
   userText: string
   provider: 'llm' | 'rule'
   details: Record<string, unknown>
@@ -143,5 +143,18 @@ export function buildErrorDebugEntry(
     details: {
       error: error instanceof Error ? error.message : String(error),
     },
+  }
+}
+
+export function buildUiContextMenuDebugEntry(
+  userText: string,
+  details: Record<string, unknown>,
+): EditingAgentDebugEntry {
+  return {
+    timestamp: new Date().toISOString(),
+    phase: 'ui_context_menu',
+    userText,
+    provider: 'rule',
+    details,
   }
 }

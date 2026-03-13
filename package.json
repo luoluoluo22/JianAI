@@ -1,14 +1,14 @@
 {
-  "name": "ltx-desktop",
+  "name": "jianai-desktop",
   "version": "1.0.2",
-  "description": "LTX-2 Video Generation - Desktop App",
+  "description": "JianAI / 剪艾 - AI Video Editor Desktop App",
   "type": "module",
   "main": "dist-electron/main.js",
   "author": {
-    "name": "Lightricks",
-    "email": "ltx-desktop-dev@lightricks.com"
+    "name": "JianAI",
+    "email": "luoluoluo22@users.noreply.github.com"
   },
-  "homepage": "https://github.com/Lightricks/LTX-Desktop",
+  "homepage": "https://github.com/luoluoluo22/JianAI",
   "license": "Apache-2.0",
   "private": true,
   "packageManager": "pnpm@10.30.3",

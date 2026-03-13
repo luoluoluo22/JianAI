@@ -95,6 +95,9 @@ export function registerAppHandlers(): void {
   })
 
   ipcMain.handle('check-first-run', () => {
+    if (isLocalBackendDisabled) {
+      return { needsSetup: false, needsLicense: false }
+    }
     const settingsPath = path.join(app.getPath('userData'), 'app_state.json')
     return getSetupStatus(settingsPath)
   })
@@ -112,6 +115,9 @@ export function registerAppHandlers(): void {
   })
 
   ipcMain.handle('fetch-license-text', async () => {
+    if (isLocalBackendDisabled) {
+      return 'Local backend is disabled in this build. License acceptance for bundled local models is not required.'
+    }
     const resp = await fetch('https://huggingface.co/Lightricks/LTX-2.3/raw/main/LICENSE')
     if (!resp.ok) {
       throw new Error(`Failed to fetch license (HTTP ${resp.status})`)

@@ -107,7 +107,7 @@ export function PythonSetup({ onReady }: PythonSetupProps) {
         // @ts-expect-error - Electron-specific CSS property
         WebkitAppRegion: 'drag'
       }}>
-        <span style={{ fontSize: 13, color: '#a0a0a0' }}>LTX Desktop</span>
+        <span style={{ fontSize: 13, color: '#a0a0a0' }}>剪艾 JianAI</span>
       </div>
 
       {/* Main Container */}
@@ -292,7 +292,7 @@ export function PythonSetup({ onReady }: PythonSetupProps) {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ fontSize: 11, color: '#666' }}>&copy; 2026 Lightricks</div>
+          <div style={{ fontSize: 11, color: '#666' }}>&copy; 2026 JianAI</div>
         </div>
       </div>
     </div>

@@ -26,9 +26,9 @@ function appendBootLog(message: string): void {
 
 function logAppVersion(): void {
   if (!app.isPackaged) {
-    console.log('[LTX Desktop] Running in development mode')
+    console.log('[JianAI] Running in development mode')
   } else {
-    console.log(`[LTX Desktop] Version ${app.getVersion()}`)
+    console.log(`[JianAI] Version ${app.getVersion()}`)
   }
 }
 
