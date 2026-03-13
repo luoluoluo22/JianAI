@@ -23,7 +23,7 @@ type RequiredModelsGateState = 'checking' | 'missing' | 'ready'
 function AppContent() {
   const { currentView } = useProjects()
   const { status, processStatus, isLoading: backendLoading, error: backendError } = useBackend()
-  const { settings, saveLtxApiKey, saveFalApiKey, forceApiGenerations, isLoaded, runtimePolicyLoaded } = useAppSettings()
+  const { settings, saveLtxApiKey, forceApiGenerations, isLoaded, runtimePolicyLoaded } = useAppSettings()
 
   const [localBackendDisabled, setLocalBackendDisabled] = useState(false)
   const [appInfoLoaded, setAppInfoLoaded] = useState(false)
@@ -39,7 +39,7 @@ function AppContent() {
   const setupCompletionInFlightRef = useRef<Promise<void> | null>(null)
 
   type ApiGatewayRequest = {
-    requiredKeys: Array<'ltx' | 'fal'>
+    requiredKeys: Array<'ltx'>
     title: string
     description: string
     blocking?: boolean
@@ -328,18 +328,6 @@ function AppContent() {
         onGetKey: () => window.electronAPI.openLtxApiKeyPage(),
         getKeyLabel: 'Get API key',
       },
-      {
-        keyType: 'fal',
-        title: 'FAL AI',
-        description: 'Required to generate images with Z Image Turbo.',
-        required: apiGatewayRequest.requiredKeys.includes('fal'),
-        isConfigured: settings.hasFalApiKey,
-        inputLabel: 'FAL AI API key',
-        placeholder: 'Enter your FAL AI API key...',
-        onSave: saveFalApiKey,
-        onGetKey: () => window.electronAPI.openFalApiKeyPage(),
-        getKeyLabel: 'Get FAL API key',
-      },
     ]
 
     return sections.filter((section) => {
@@ -351,9 +339,7 @@ function AppContent() {
     apiGatewayRequest,
     isForcedFirstRun,
     saveApiKeyForFirstRun,
-    saveFalApiKey,
     saveLtxApiKey,
-    settings.hasFalApiKey,
     settings.hasLtxApiKey,
   ])
 

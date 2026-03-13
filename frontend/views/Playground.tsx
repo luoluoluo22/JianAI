@@ -31,6 +31,7 @@ const DEFAULT_SETTINGS: GenerationSettings = {
   cameraMotion: 'none',
   aspectRatio: '16:9',
   // Image settings
+  imageModel: '@cf/leonardo/lucid-origin',
   imageResolution: '1080p',
   imageAspectRatio: '16:9',
   imageSteps: 4,
@@ -219,12 +220,16 @@ export function Playground() {
   const isIcLoraMode = mode === 'ic-lora'
   const isVideoMode = mode === 'text-to-video' || mode === 'image-to-video'
   const isBusy = isRetakeMode ? isRetaking : isIcLoraMode ? isIcLoraGenerating : isGenerating
-  const canGenerate = processStatus === 'alive' && !isBusy && (
-    isRetakeMode
-      ? retakeInput.ready && !!retakeInput.videoPath
-      : isIcLoraMode
-        ? icLoraInput.ready && !!icLoraInput.videoPath && !!prompt.trim()
-        : !!prompt.trim()
+  const canGenerate = !isBusy && (
+    mode === 'text-to-image'
+      ? !!prompt.trim()
+      : processStatus === 'alive' && (
+          isRetakeMode
+            ? retakeInput.ready && !!retakeInput.videoPath
+            : isIcLoraMode
+              ? icLoraInput.ready && !!icLoraInput.videoPath && !!prompt.trim()
+              : !!prompt.trim()
+        )
   )
 
   return (

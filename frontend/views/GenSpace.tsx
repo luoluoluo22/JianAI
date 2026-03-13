@@ -361,6 +361,7 @@ function PromptBar({
     videoResolution: string
     fps: number
     aspectRatio: string
+    imageModel: string
     imageResolution: string
     variations: number
     audio?: boolean
@@ -620,11 +621,29 @@ function PromptBar({
           </>
         ) : mode === 'image' ? (
           <>
-            {/* Model indicator */}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-800/50">
-              <ZitIcon className="h-3.5 w-3.5" />
-              <span className="text-zinc-300 font-medium">Z-Image Turbo</span>
-            </div>
+            <SettingsDropdown
+              title="IMAGE MODEL"
+              value={settings.imageModel}
+              onChange={(v) => onSettingsChange({ ...settings, imageModel: v })}
+              options={[
+                { value: '@cf/leonardo/lucid-origin', label: 'Leonardo Lucid Origin' },
+                { value: '@cf/black-forest-labs/flux-1-schnell', label: 'FLUX.1 Schnell' },
+                { value: '@cf/bytedance/stable-diffusion-xl-lightning', label: 'SDXL Lightning' },
+              ]}
+              trigger={
+                <>
+                  <ZitIcon className="h-3.5 w-3.5" />
+                  <span className="text-zinc-300 font-medium">
+                    {settings.imageModel === '@cf/black-forest-labs/flux-1-schnell'
+                      ? 'FLUX.1 Schnell'
+                      : settings.imageModel === '@cf/bytedance/stable-diffusion-xl-lightning'
+                        ? 'SDXL Lightning'
+                        : 'Leonardo Lucid Origin'}
+                  </span>
+                  <ChevronUp className="h-3 w-3 text-zinc-500" />
+                </>
+              }
+            />
             
             {/* Resolution dropdown */}
             <SettingsDropdown
@@ -842,6 +861,7 @@ const DEFAULT_VIDEO_SETTINGS = {
   videoResolution: '540p',
   fps: 24,
   aspectRatio: '16:9',
+  imageModel: '@cf/leonardo/lucid-origin',
   imageResolution: '1080p',
   variations: 1,
   audio: true,
@@ -899,7 +919,7 @@ export function GenSpace() {
   } | null>(null)
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_VIDEO_SETTINGS }))
   const applyForcedVideoSettings = useCallback(
-    (next: { model: string; duration: number; videoResolution: string; fps: number; audio: boolean; aspectRatio: string; imageResolution: string; variations: number }) => {
+    (next: { model: string; duration: number; videoResolution: string; fps: number; audio: boolean; aspectRatio: string; imageModel: string; imageResolution: string; variations: number }) => {
       if (!shouldVideoGenerateWithLtxApi || mode !== 'video') return next
       return sanitizeForcedApiVideoSettings(next, { hasAudio: !!inputAudio })
     },

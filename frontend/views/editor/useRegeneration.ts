@@ -66,6 +66,7 @@ export function useRegeneration(params: UseRegenerationParams) {
     fps: 24,
     audio: true,
     cameraMotion: 'none',
+    imageModel: '@cf/leonardo/lucid-origin',
     imageResolution: '1080p',
     imageAspectRatio: '16:9',
     imageSteps: 30,

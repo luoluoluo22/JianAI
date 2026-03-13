@@ -21,14 +21,15 @@ interface SettingsModalProps {
 type TabId = 'general' | 'apiKeys' | 'inference' | 'promptEnhancer' | 'about'
 
 export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProps) {
-  const { settings, updateSettings, saveLtxApiKey, saveFalApiKey, saveGeminiApiKey, forceApiGenerations } = useAppSettings()
+  const { settings, updateSettings, saveLtxApiKey, saveCloudflareImageCredentials, saveGeminiApiKey, forceApiGenerations } = useAppSettings()
   const onSettingsChange = (next: AppSettings) => updateSettings(next)
   const [activeTab, setActiveTab] = useState<TabId>('general')
   const [ltxApiKeyInput, setLtxApiKeyInput] = useState('')
   const ltxApiKeyInputRef = useRef<HTMLInputElement>(null)
   const [focusLtxApiKeyInputOnTabChange, setFocusLtxApiKeyInputOnTabChange] = useState(false)
-  const [falApiKeyInput, setFalApiKeyInput] = useState('')
-  const falApiKeyInputRef = useRef<HTMLInputElement>(null)
+  const [cloudflareAccountIdInput, setCloudflareAccountIdInput] = useState('')
+  const cloudflareAccountIdInputRef = useRef<HTMLInputElement>(null)
+  const [cloudflareApiTokenInput, setCloudflareApiTokenInput] = useState('')
   const [geminiApiKeyInput, setGeminiApiKeyInput] = useState('')
   const geminiApiKeyInputRef = useRef<HTMLInputElement>(null)
   const [textEncoderStatus, setTextEncoderStatus] = useState<TextEncoderStatus | null>(null)
@@ -43,6 +44,11 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
   const [showModelLicense, setShowModelLicense] = useState(false)
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false)
   const [projectAssetsPath, setProjectAssetsPath] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) return
+    setCloudflareAccountIdInput(settings.cloudflareAccountId)
+  }, [isOpen, settings.cloudflareAccountId])
 
   // Sync active tab with initialTab prop when modal opens
   useEffect(() => {
@@ -802,36 +808,45 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                 </div>
               </div>
 
-              {/* FAL API Key Section */}
+              {/* Cloudflare Image API Section */}
               <div className="space-y-4 pt-4 border-t border-zinc-800">
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-4 w-4 text-cyan-400" />
-                  <h3 className="text-sm font-semibold text-white">FAL AI</h3>
+                  <h3 className="text-sm font-semibold text-white">Cloudflare 图片生成</h3>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">可选</span>
                 </div>
 
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Your FAL AI key is used for generating images with Z Image Turbo when API generations are enabled.
+                  文生图默认通过 Cloudflare Workers AI 执行。这里需要配置 Account ID 和 API Token。
                 </p>
 
                 <div className="bg-zinc-800/50 rounded-lg p-4 space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-zinc-300">Cloudflare Account ID</label>
+                    <input
+                      ref={cloudflareAccountIdInputRef}
+                      type="text"
+                      value={cloudflareAccountIdInput}
+                      onChange={(e) => setCloudflareAccountIdInput(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="Enter your Cloudflare Account ID..."
+                      className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <LtxApiKeyInput
-                      ref={falApiKeyInputRef}
-                      value={falApiKeyInput}
-                      onChange={(e) => setFalApiKeyInput(e.target.value)}
-                      placeholder={settings.hasFalApiKey ? 'Enter new key to replace...' : 'Enter your FAL AI API key...'}
+                      value={cloudflareApiTokenInput}
+                      onChange={(e) => setCloudflareApiTokenInput(e.target.value)}
+                      placeholder={settings.hasCloudflareApiToken ? 'Enter new token to replace...' : 'Enter your Cloudflare API token...'}
                       stopPropagation
                       className="flex-1"
                     />
                     <button
                       onClick={() => {
-                        const trimmed = falApiKeyInput.trim()
-                        if (!trimmed) return
-                        void saveFalApiKey(trimmed)
-                        setFalApiKeyInput('')
+                        void saveCloudflareImageCredentials(cloudflareAccountIdInput, cloudflareApiTokenInput)
+                        setCloudflareApiTokenInput('')
                       }}
-                      disabled={!falApiKeyInput.trim()}
+                      disabled={!cloudflareAccountIdInput.trim() || (!cloudflareApiTokenInput.trim() && !settings.hasCloudflareApiToken)}
                       className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                     >
                       保存密钥
@@ -839,16 +854,16 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                   </div>
                   <ApiKeyHelperRow
                     stopPropagation
-                    label="Get FAL API key"
-                    onOpenKey={() => window.electronAPI.openFalApiKeyPage()}
+                    label="打开 Cloudflare Token 页面"
+                    onOpenKey={() => window.electronAPI.openCloudflareApiTokenPage()}
                   />
                   <div className="flex items-center justify-between">
                     <div className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1.5 ${
-                      settings.hasFalApiKey
+                      settings.cloudflareAccountId.trim() && settings.hasCloudflareApiToken
                         ? 'bg-green-500/10 text-green-400'
                         : 'bg-zinc-800 text-zinc-500'
                     }`}>
-                      {settings.hasFalApiKey ? (
+                      {settings.cloudflareAccountId.trim() && settings.hasCloudflareApiToken ? (
                         <>
                           <Check className="h-3 w-3" />
                           已配置密钥

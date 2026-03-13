@@ -17,6 +17,9 @@ function getHumanMessage(error: string): string {
   if ((lower.includes('model') && (lower.includes('not found') || lower.includes('load')))) {
     return 'The AI model failed to load. Please check your setup and try again.'
   }
+  if (lower.includes('cloudflare')) {
+    return 'Cloudflare 文生图请求失败。请检查 Account ID、API Token、所选模型和网络连接。'
+  }
   if (lower.includes('fetch') || lower.includes('network') || lower.includes('econnrefused')) {
     return 'Could not connect to the generation server. Make sure the backend is running.'
   }

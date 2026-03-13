@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from 'react'
 import type { GenerationSettings } from '../components/SettingsPanel'
 import { backendFetch } from '../lib/backend'
 import { useAppSettings } from '../contexts/AppSettingsContext'
+import { generateImageWithCloudflare } from '../lib/cloudflare-image'
+import { logger } from '../lib/logger'
 
 interface GenerationState {
   isGenerating: boolean
@@ -90,7 +92,7 @@ function getPhaseMessage(phase: string): string {
 }
 
 export function useGeneration(): UseGenerationReturn {
-  const { settings: appSettings, forceApiGenerations, refreshSettings } = useAppSettings()
+  const { settings: appSettings } = useAppSettings()
   const [state, setState] = useState<GenerationState>({
     isGenerating: false,
     progress: 0,
@@ -289,37 +291,15 @@ export function useGeneration(): UseGenerationReturn {
     prompt: string,
     settings: GenerationSettings
   ) => {
-    if (forceApiGenerations) {
-      try {
-        const response = await backendFetch('/api/settings')
-        if (response.ok) {
-          const payload = await response.json()
-          if (!payload?.hasFalApiKey) {
-            void refreshSettings()
-            window.dispatchEvent(new CustomEvent('open-api-gateway', {
-              detail: {
-                requiredKeys: ['fal'],
-                title: 'Connect FAL AI',
-                description: 'FAL AI is required for generating images with Z Image Turbo when API generations are enabled.',
-                blocking: false,
-              },
-            }))
-            return
-          }
-        }
-      } catch {
-        if (!appSettings.hasFalApiKey) {
-          window.dispatchEvent(new CustomEvent('open-api-gateway', {
-            detail: {
-              requiredKeys: ['fal'],
-              title: 'Connect FAL AI',
-              description: 'FAL AI is required for generating images with Z Image Turbo when API generations are enabled.',
-              blocking: false,
-            },
-          }))
-          return
-        }
-      }
+    if (!appSettings.cloudflareAccountId.trim() || !appSettings.hasCloudflareApiToken) {
+      window.dispatchEvent(new CustomEvent('open-settings', {
+        detail: { tab: 'apiKeys' },
+      }))
+      setState(prev => ({
+        ...prev,
+        error: '请先在设置中配置 Cloudflare Account ID 和 API Token。',
+      }))
+      return
     }
 
     const numImages = settings.variations || 1
@@ -340,101 +320,60 @@ export function useGeneration(): UseGenerationReturn {
     abortControllerRef.current = new AbortController()
 
     try {
-      // Skip prompt enhancement for T2I - use original prompt directly
       const finalPrompt = prompt
-
       const dims = getImageDimensions(settings)
       const numSteps = settings.imageSteps || 4
+      const assetsRoot = await window.electronAPI.getProjectAssetsPath()
+      const separator = assetsRoot.includes('\\') ? '\\' : '/'
+      const normalizedRoot = assetsRoot.replace(/[\\/]+$/, '')
+      const rawPaths: string[] = []
 
-      // Poll for progress
-      const pollProgress = async () => {
-        try {
-          const res = await backendFetch('/api/generation/progress')
-          if (res.ok) {
-            const data = await res.json()
-            const currentImage = data.currentStep || 0
-            const totalImages = data.totalSteps || numImages
-            setState(prev => ({
-              ...prev,
-              progress: data.progress,
-              statusMessage: data.phase === 'loading_model' 
-                ? 'Loading Z-Image Turbo model...' 
-                : data.phase === 'inference'
-                  ? numImages > 1 
-                    ? `Generating image ${currentImage + 1}/${totalImages}...`
-                    : 'Generating image...'
-                  : data.phase === 'complete'
-                    ? 'Complete!'
-                    : 'Generating...',
-            }))
-          }
-        } catch {
-          // Ignore polling errors
-        }
-      }
-      
-      const progressInterval = setInterval(pollProgress, 500)
+      for (let index = 0; index < numImages; index += 1) {
+        setState(prev => ({
+          ...prev,
+          progress: Math.round((index / numImages) * 100),
+          statusMessage: numImages > 1
+            ? `生成图片 ${index + 1}/${numImages}...`
+            : '正在生成图片...',
+        }))
 
-      const response = await backendFetch('/api/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        const imageBytes = await generateImageWithCloudflare({
           prompt: finalPrompt,
+          model: settings.imageModel,
           width: dims.width,
           height: dims.height,
           numSteps,
-          numImages,
-        }),
-        signal: abortControllerRef.current.signal,
+          index,
+          signal: abortControllerRef.current.signal ?? undefined,
+        })
+
+        const fileName = `cloudflare-image-${Date.now()}-${index + 1}.png`
+        const filePath = `${normalizedRoot}${separator}${fileName}`
+        const saveResult = await window.electronAPI.saveBinaryFile(filePath, imageBytes)
+        if (!saveResult.success || !saveResult.path) {
+          throw new Error(saveResult.error || 'Failed to save generated image.')
+        }
+        logger.info(`[CloudflareImage] saved path=${saveResult.path}`)
+        rawPaths.push(saveResult.path)
+      }
+
+      const fileUrls = rawPaths.map((path: string) => {
+        const imagePath = path.replace(/\\/g, '/')
+        return imagePath.startsWith('/') ? `file://${imagePath}` : `file:///${imagePath}`
       })
 
-      clearInterval(progressInterval)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(errorText || 'Image generation failed')
-      }
-
-      const result = await response.json()
-      
-      if (result.status === 'complete') {
-        // Handle both new format (image_paths array) and old format (single image_path)
-        let rawPaths: string[] = []
-        if (result.image_paths && Array.isArray(result.image_paths)) {
-          rawPaths = result.image_paths
-        } else if (result.image_path) {
-          rawPaths = [result.image_path]
-        }
-        
-        if (rawPaths.length > 0) {
-          // Convert all paths to file URLs
-          const fileUrls = rawPaths.map((path: string) => {
-            const imagePath = path.replace(/\\/g, '/')
-            return imagePath.startsWith('/') ? `file://${imagePath}` : `file:///${imagePath}`
-          })
-          
-          setState({
-            isGenerating: false,
-            progress: 100,
-            statusMessage: 'Complete!',
-            videoUrl: null,
-            videoPath: null,
-            imageUrl: fileUrls[0],  // First image for backwards compatibility
-            imagePath: rawPaths[0],  // First image path
-            imageUrls: fileUrls,    // All images
-            imagePaths: rawPaths,   // All image paths
-            error: null,
-          })
-        }
-      } else if (result.status === 'cancelled') {
-        setState(prev => ({
-          ...prev,
-          isGenerating: false,
-          statusMessage: 'Cancelled',
-        }))
-      } else if (result.error) {
-        throw new Error(result.error)
-      }
+      setState({
+        isGenerating: false,
+        progress: 100,
+        statusMessage: 'Complete!',
+        videoUrl: null,
+        videoPath: null,
+        imageUrl: fileUrls[0],
+        imagePath: rawPaths[0],
+        imageUrls: fileUrls,
+        imagePaths: rawPaths,
+        error: null,
+      })
 
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -444,6 +383,7 @@ export function useGeneration(): UseGenerationReturn {
           statusMessage: 'Cancelled',
         }))
       } else {
+        logger.error(`[CloudflareImage] generation failed: ${error instanceof Error ? error.message : String(error)}`)
         setState(prev => ({
           ...prev,
           isGenerating: false,
@@ -451,7 +391,7 @@ export function useGeneration(): UseGenerationReturn {
         }))
       }
     }
-  }, [appSettings.hasFalApiKey, forceApiGenerations, refreshSettings])
+  }, [appSettings.cloudflareAccountId, appSettings.hasCloudflareApiToken])
 
   const reset = useCallback(() => {
     setState({

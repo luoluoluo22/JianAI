@@ -16,6 +16,7 @@ export interface GenerationSettings {
   cameraMotion: string
   aspectRatio?: string
   // Image-specific settings
+  imageModel?: string
   imageResolution: string
   imageAspectRatio: string
   imageSteps: number
@@ -73,6 +74,17 @@ export function SettingsPanel({
   if (isImageMode) {
     return (
       <div className="space-y-4">
+        <Select
+          label="Image Model"
+          value={settings.imageModel || '@cf/leonardo/lucid-origin'}
+          onChange={(e) => handleChange('imageModel', e.target.value)}
+          disabled={disabled}
+        >
+          <option value="@cf/leonardo/lucid-origin">Leonardo Lucid Origin</option>
+          <option value="@cf/black-forest-labs/flux-1-schnell">FLUX.1 Schnell</option>
+          <option value="@cf/bytedance/stable-diffusion-xl-lightning">SDXL Lightning</option>
+        </Select>
+
         {/* Aspect Ratio and Quality side by side */}
         <div className="grid grid-cols-2 gap-3">
           <Select

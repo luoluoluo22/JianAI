@@ -71,9 +71,9 @@ export function registerFileHandlers(): void {
     return true
   })
 
-  ipcMain.handle('open-fal-api-key-page', async () => {
+  ipcMain.handle('open-cloudflare-api-token-page', async () => {
     const { shell } = await import('electron')
-    await shell.openExternal('https://fal.ai/dashboard/keys')
+    await shell.openExternal('https://dash.cloudflare.com/profile/api-tokens')
     return true
   })
 
@@ -147,6 +147,106 @@ export function registerFileHandlers(): void {
     } catch (error) {
       logger.error( `Error saving binary file: ${error}`)
       return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('generate-cloudflare-image', async (
+    _event,
+    payload: {
+      accountId: string
+      apiToken: string
+      model: string
+      prompt: string
+      width: number
+      height: number
+      steps: number
+      guidance?: number
+      seed?: number
+    },
+  ): Promise<{ success: true; data: ArrayBuffer } | { success: false; error: string }> => {
+    const accountId = payload.accountId.trim()
+    const apiToken = payload.apiToken.trim()
+    const model = payload.model.trim()
+
+    if (!accountId || !apiToken || !model || !payload.prompt.trim()) {
+      return { success: false, error: 'Missing Cloudflare image generation parameters.' }
+    }
+
+    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`
+    logger.info(`[cloudflare-image-ipc] request model=${model} size=${payload.width}x${payload.height} steps=${payload.steps} promptLength=${payload.prompt.length}`)
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: payload.prompt,
+          width: payload.width,
+          height: payload.height,
+          steps: payload.steps,
+          guidance: payload.guidance ?? 4.5,
+          seed: payload.seed,
+        }),
+      })
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') ?? ''
+        let detail = ''
+        if (contentType.includes('application/json')) {
+          const errorPayload = await response.json() as {
+            errors?: Array<{ message?: string }>
+            result?: { error?: string }
+            message?: string
+          }
+          detail =
+            errorPayload.errors?.[0]?.message ||
+            errorPayload.result?.error ||
+            errorPayload.message ||
+            ''
+        } else {
+          detail = await response.text()
+        }
+        logger.error(`[cloudflare-image-ipc] bad response status=${response.status} model=${model} detail=${detail || 'empty-body'}`)
+        return { success: false, error: detail || `Cloudflare image request failed with status ${response.status}.` }
+      }
+
+      const contentType = response.headers.get('content-type') ?? ''
+      let data: ArrayBuffer
+
+      if (contentType.includes('application/json')) {
+        const successPayload = await response.json() as {
+          result?: { image?: string }
+          image?: string
+          errors?: Array<{ message?: string }>
+          message?: string
+        }
+        const detail =
+          successPayload.errors?.[0]?.message ||
+          successPayload.message ||
+          ''
+        if (detail) {
+          logger.error(`[cloudflare-image-ipc] json error model=${model} detail=${detail}`)
+          return { success: false, error: detail }
+        }
+        const encodedImage = successPayload.result?.image ?? successPayload.image
+        if (!encodedImage) {
+          return { success: false, error: 'Cloudflare image response did not contain image data.' }
+        }
+        const decoded = Buffer.from(encodedImage, 'base64')
+        data = decoded.buffer.slice(decoded.byteOffset, decoded.byteOffset + decoded.byteLength)
+      } else {
+        data = await response.arrayBuffer()
+      }
+
+      logger.info(`[cloudflare-image-ipc] response ok status=${response.status} model=${model}`)
+      return { success: true, data }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      logger.error(`[cloudflare-image-ipc] request failed model=${model} error=${message}`)
+      return { success: false, error: `Cloudflare request failed: ${message}` }
     }
   })
 

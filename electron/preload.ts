@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Open specific app pages / folders
   openLtxApiKeyPage: (): Promise<boolean> => ipcRenderer.invoke('open-ltx-api-key-page'),
-  openFalApiKeyPage: (): Promise<boolean> => ipcRenderer.invoke('open-fal-api-key-page'),
+  openCloudflareApiTokenPage: (): Promise<boolean> => ipcRenderer.invoke('open-cloudflare-api-token-page'),
   openParentFolderOfFile: (filePath: string): Promise<void> => ipcRenderer.invoke('open-parent-folder-of-file', filePath),
   
   // Reveal a specific file in the OS file manager (Explorer/Finder)
@@ -63,6 +63,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('save-file', filePath, data, encoding),
   saveBinaryFile: (filePath: string, data: ArrayBuffer): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('save-binary-file', filePath, data),
+  generateCloudflareImage: (payload: {
+    accountId: string
+    apiToken: string
+    model: string
+    prompt: string
+    width: number
+    height: number
+    steps: number
+    guidance?: number
+    seed?: number
+  }): Promise<{ success: true; data: ArrayBuffer } | { success: false; error: string }> =>
+    ipcRenderer.invoke('generate-cloudflare-image', payload),
   showOpenDirectoryDialog: (options: { title?: string }): Promise<string | null> =>
     ipcRenderer.invoke('show-open-directory-dialog', options),
   searchDirectoryForFiles: (dir: string, filenames: string[]): Promise<Record<string, string>> =>
@@ -156,6 +168,7 @@ declare global {
       fetchLicenseText: () => Promise<string>
       getNoticesText: () => Promise<string>
       openLtxApiKeyPage: () => Promise<boolean>
+      openCloudflareApiTokenPage: () => Promise<boolean>
       openParentFolderOfFile: (filePath: string) => Promise<void>
       showItemInFolder: (filePath: string) => Promise<void>
       getLogs: () => Promise<LogsResponse>
@@ -171,6 +184,17 @@ declare global {
       showSaveDialog: (options: { title?: string; defaultPath?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<string | null>
       saveFile: (filePath: string, data: string, encoding?: string) => Promise<{ success: boolean; path?: string; error?: string }>
       saveBinaryFile: (filePath: string, data: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>
+      generateCloudflareImage: (payload: {
+        accountId: string
+        apiToken: string
+        model: string
+        prompt: string
+        width: number
+        height: number
+        steps: number
+        guidance?: number
+        seed?: number
+      }) => Promise<{ success: true; data: ArrayBuffer } | { success: false; error: string }>
       showOpenDirectoryDialog: (options: { title?: string }) => Promise<string | null>
       searchDirectoryForFiles: (dir: string, filenames: string[]) => Promise<Record<string, string>>
       checkFilesExist: (filePaths: string[]) => Promise<Record<string, boolean>>

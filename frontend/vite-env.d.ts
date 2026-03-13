@@ -24,7 +24,7 @@ interface Window {
     fetchLicenseText: () => Promise<string>
     getNoticesText: () => Promise<string>
     openLtxApiKeyPage: () => Promise<boolean>
-    openFalApiKeyPage: () => Promise<boolean>
+    openCloudflareApiTokenPage: () => Promise<boolean>
     openParentFolderOfFile: (filePath: string) => Promise<void>
     showItemInFolder: (filePath: string) => Promise<void>
     getLogs: () => Promise<LogsResponse>
@@ -40,6 +40,17 @@ interface Window {
     showSaveDialog: (options: { title?: string; defaultPath?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<string | null>
     saveFile: (filePath: string, data: string, encoding?: string) => Promise<{ success: boolean; path?: string; error?: string }>
     saveBinaryFile: (filePath: string, data: ArrayBuffer) => Promise<{ success: boolean; path?: string; error?: string }>
+    generateCloudflareImage: (payload: {
+      accountId: string
+      apiToken: string
+      model: string
+      prompt: string
+      width: number
+      height: number
+      steps: number
+      guidance?: number
+      seed?: number
+    }) => Promise<{ success: true; data: ArrayBuffer } | { success: false; error: string }>
     showOpenDirectoryDialog: (options: { title?: string }) => Promise<string | null>
     checkFilesExist: (filePaths: string[]) => Promise<Record<string, boolean>>
     showOpenFileDialog: (options: { title?: string; filters?: { name: string; extensions: string[] }[]; properties?: string[] }) => Promise<string[] | null>
