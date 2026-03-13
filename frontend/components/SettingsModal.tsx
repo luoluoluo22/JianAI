@@ -265,11 +265,11 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
   }
 
   const tabs = [
-    { id: 'general' as TabId, label: 'General', icon: Settings },
-    { id: 'apiKeys' as TabId, label: 'API Keys', icon: KeyRound },
-    { id: 'inference' as TabId, label: 'Inference', icon: Sliders },
-    { id: 'promptEnhancer' as TabId, label: 'Prompt Enhancer', icon: Sparkles },
-    { id: 'about' as TabId, label: 'About', icon: Info },
+    { id: 'general' as TabId, label: '通用', icon: Settings },
+    { id: 'apiKeys' as TabId, label: 'API 密钥', icon: KeyRound },
+    { id: 'inference' as TabId, label: '推理', icon: Sliders },
+    { id: 'promptEnhancer' as TabId, label: '提示词增强', icon: Sparkles },
+    { id: 'about' as TabId, label: '关于', icon: Info },
   ]
 
   return (
@@ -286,7 +286,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
           <div className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-zinc-400" />
-            <h2 className="text-lg font-semibold text-white">Settings</h2>
+            <h2 className="text-lg font-semibold text-white">设置</h2>
           </div>
           <Button
             variant="ghost"
@@ -327,14 +327,14 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Download className="h-4 w-4 text-blue-400" />
-                  <h3 className="text-sm font-semibold text-white">Project Assets Path</h3>
+                  <h3 className="text-sm font-semibold text-white">项目素材目录</h3>
                 </div>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Where generated video and image assets are saved. Each project gets a subfolder.
+                  生成的视频和图片素材会保存在这里。每个项目会拥有自己的子目录。
                 </p>
                 <div className="flex gap-2">
                   <div className="flex-1 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm truncate select-text">
-                    {projectAssetsPath || <span className="text-zinc-600">Not set</span>}
+                    {projectAssetsPath || <span className="text-zinc-600">未设置</span>}
                   </div>
                   <Button
                     variant="outline"
@@ -355,7 +355,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Film className="h-4 w-4 text-blue-400" />
-                    <h3 className="text-sm font-semibold text-white">Videos Generation</h3>
+                    <h3 className="text-sm font-semibold text-white">视频生成</h3>
                   </div>
 
                   <div
@@ -377,10 +377,10 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <Zap className="h-4 w-4 text-blue-400" />
-                          <span className="text-sm font-medium text-white">Generate With API</span>
+                          <span className="text-sm font-medium text-white">优先使用 API 生成</span>
                         </div>
                         <p className="text-xs text-zinc-400 mt-1">
-                          Use LTX API for video generation when an LTX API key is configured.
+                          配置好 LTX API 密钥后，优先使用 LTX API 进行视频生成。
                         </p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -393,7 +393,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                     {!settings.hasLtxApiKey && (
                       <div className="mt-2 text-xs text-amber-400 flex items-center gap-1.5">
                         <AlertCircle className="h-3 w-3" />
-                        API key required — configure it in the API Keys tab.
+                        需要 API 密钥，请先在“API 密钥”标签页中配置。
                       </div>
                     )}
                   </div>
@@ -407,11 +407,11 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                     <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3" />
                     <line x1="8" y1="12" x2="16" y2="12" />
                   </svg>
-                  <h3 className="text-sm font-semibold text-white">Text Encoding</h3>
+                  <h3 className="text-sm font-semibold text-white">文本编码</h3>
                 </div>
 
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Text encoding converts your prompt into data the AI understands. Choose how to do this.
+                  文本编码会把你的提示词转换成 AI 可理解的数据。你可以选择编码方式。
                 </p>
 
                 {/* LTX API Option (Default) */}
@@ -433,10 +433,10 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       <div className="flex items-center gap-2">
                         <Zap className="h-4 w-4 text-blue-400" />
                         <span className="text-sm font-medium text-white">LTX API</span>
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">Recommended</span>
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">推荐</span>
                       </div>
                       <p className="text-xs text-zinc-400 mt-1">
-                        Fast cloud-based text encoding (~1 second). Requires an LTX API key configured in the API Keys tab.
+                        云端文本编码，速度快（约 1 秒）。需要先在“API 密钥”标签页配置 LTX API 密钥。
                       </p>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -450,7 +450,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                   {!settings.useLocalTextEncoder && !settings.hasLtxApiKey && (
                     <div className="mt-2 text-xs text-amber-400 flex items-center gap-1.5">
                       <AlertCircle className="h-3 w-3" />
-                      API key required — configure it in the API Keys tab.
+                      需要 API 密钥，请先在“API 密钥”标签页中配置。
                     </div>
                   )}
 
@@ -458,8 +458,8 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                   {!settings.useLocalTextEncoder && settings.hasLtxApiKey && (
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-700/50">
                       <div>
-                        <label className="text-xs text-white">Prompt Cache</label>
-                        <p className="text-xs text-zinc-500">Skip repeat encoding calls</p>
+                        <label className="text-xs text-white">提示词缓存</label>
+                        <p className="text-xs text-zinc-500">避免重复触发同样的编码请求</p>
                       </div>
                       <input
                         type="number"
@@ -488,10 +488,10 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                           <rect x="4" y="4" width="16" height="16" rx="2" />
                           <path d="M9 9h6m-6 3h6m-6 3h4" />
                         </svg>
-                        <span className="text-sm font-medium text-white">Local Encoder</span>
+                        <span className="text-sm font-medium text-white">本地编码器</span>
                       </div>
                       <p className="text-xs text-zinc-400 mt-1">
-                        Run on your computer (~23 seconds). Requires 25 GB download.
+                        在你的电脑上本地运行（约 23 秒）。需要额外下载约 25 GB。
                       </p>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -507,18 +507,18 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       {textEncoderStatus?.downloaded ? (
                         <div className="flex items-center gap-2 text-xs text-green-400">
                           <Check className="h-4 w-4" />
-                          <span>Downloaded ({textEncoderStatus.size_gb} GB)</span>
+                          <span>已下载（{textEncoderStatus.size_gb} GB）</span>
                         </div>
                       ) : isDownloading ? (
                         <div className="flex items-center gap-2 text-xs text-blue-400">
                           <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                          <span>Downloading text encoder...</span>
+                          <span>正在下载文本编码器...</span>
                         </div>
                       ) : (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-xs text-amber-400">
                             <AlertCircle className="h-4 w-4" />
-                            <span>Not downloaded ({textEncoderStatus?.expected_size_gb || 8} GB required)</span>
+                            <span>尚未下载（需要 {textEncoderStatus?.expected_size_gb || 8} GB）</span>
                           </div>
                           <Button
                             size="sm"
@@ -529,7 +529,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs"
                           >
                             <Download className="h-3 w-3 mr-2" />
-                            Download Text Encoder
+                            下载文本编码器
                           </Button>
                           {downloadError && (
                             <p className="text-xs text-red-400">{downloadError}</p>
@@ -550,14 +550,11 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                         <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
                       </svg>
                       <label className="text-sm font-medium text-white">
-                        Preload models on startup
+                        启动时预加载模型
                       </label>
                     </div>
                     <p className="text-xs text-zinc-500 leading-relaxed">
-                      Load AI models in the background after the app starts. The video model is loaded
-                      and warmed up on GPU, and the image model is preloaded into CPU RAM for faster
-                      first generation. When disabled, models load on first use (faster startup, slower
-                      first generation). Requires app restart to take effect.
+                      应用启动后在后台预加载 AI 模型。视频模型会加载并在 GPU 上预热，图像模型会预加载到 CPU 内存，以提升首次生成速度。关闭后会在首次使用时再加载（启动更快，但第一次生成更慢）。修改后需要重启应用生效。
                     </p>
                   </div>
 
@@ -585,7 +582,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                   <div className={`w-1.5 h-1.5 rounded-full ${
                     settings.loadOnStartup ? 'bg-blue-400' : 'bg-zinc-600'
                   }`} />
-                  {settings.loadOnStartup ? 'Models preload in background at startup' : 'Models load on first generation'}
+                  {settings.loadOnStartup ? '应用启动时后台预加载模型' : '在首次生成时再加载模型'}
                 </div>
               </div>
 
@@ -602,9 +599,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       </label>
                     </div>
                     <p className="text-xs text-zinc-500 leading-relaxed">
-                      Compiles the model for optimized inference. <span className="text-orange-400">Experimental:</span> First
-                      generation can take 5-10+ minutes for compilation. Subsequent generations may be
-                      20-40% faster. Requires app restart to take effect.
+                      对模型进行编译以优化推理速度。<span className="text-orange-400">实验性功能：</span>首次生成可能需要 5 到 10 分钟以上来完成编译，后续生成可能提升 20% 到 40% 的速度。修改后需要重启应用生效。
                     </p>
                   </div>
 
@@ -632,7 +627,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                   <div className={`w-1.5 h-1.5 rounded-full ${
                     settings.useTorchCompile ? 'bg-orange-400' : 'bg-zinc-600'
                   }`} />
-                  {settings.useTorchCompile ? 'Optimized inference (recommended)' : 'Standard inference'}
+                  {settings.useTorchCompile ? '优化推理（推荐）' : '标准推理'}
                 </div>
               </div>
 
@@ -646,11 +641,11 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
                       <label className="text-sm font-medium text-white">
-                        Lock Seed
+                        锁定随机种子
                       </label>
                     </div>
                     <p className="text-xs text-zinc-500 leading-relaxed">
-                      Use the same seed for reproducible generations. When unlocked, a random seed is used each time.
+                      使用相同种子可获得可复现结果。关闭后，每次都会使用随机种子。
                     </p>
                   </div>
 
@@ -781,7 +776,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       disabled={!ltxApiKeyInput.trim()}
                       className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                     >
-                      Save Key
+                      保存密钥
                     </button>
                   </div>
                   <LtxApiKeyHelperRow stopPropagation />
@@ -794,12 +789,12 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       {settings.hasLtxApiKey ? (
                         <>
                           <Check className="h-3 w-3" />
-                          Key configured
+                          已配置密钥
                         </>
                       ) : (
                         <>
                           <AlertCircle className="h-3 w-3" />
-                          API key required
+                          需要 API 密钥
                         </>
                       )}
                     </div>
@@ -812,7 +807,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-4 w-4 text-cyan-400" />
                   <h3 className="text-sm font-semibold text-white">FAL AI</h3>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">Optional</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">可选</span>
                 </div>
 
                 <p className="text-xs text-zinc-500 leading-relaxed">
@@ -839,7 +834,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       disabled={!falApiKeyInput.trim()}
                       className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                     >
-                      Save Key
+                      保存密钥
                     </button>
                   </div>
                   <ApiKeyHelperRow
@@ -856,12 +851,12 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       {settings.hasFalApiKey ? (
                         <>
                           <Check className="h-3 w-3" />
-                          Key configured
+                          已配置密钥
                         </>
                       ) : (
                         <>
                           <AlertCircle className="h-3 w-3" />
-                          Optional
+                          可选
                         </>
                       )}
                     </div>
@@ -901,7 +896,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       disabled={!geminiApiKeyInput.trim()}
                       className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                     >
-                      Save Key
+                      保存密钥
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
@@ -913,12 +908,12 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       {settings.hasGeminiApiKey ? (
                         <>
                           <Check className="h-3 w-3" />
-                          Key configured
+                          已配置密钥
                         </>
                       ) : (
                         <>
                           <AlertCircle className="h-3 w-3" />
-                          API key required
+                          需要 API 密钥
                         </>
                       )}
                     </div>
@@ -1053,7 +1048,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-blue-400" />
-                  <h3 className="text-sm font-semibold text-white">Prompt Enhancer</h3>
+                  <h3 className="text-sm font-semibold text-white">提示词增强</h3>
                 </div>
 
                 <p className="text-xs text-zinc-500 leading-relaxed">
@@ -1078,7 +1073,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                         onClick={() => setActiveTab('apiKeys')}
                         className="w-full mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
                       >
-                        Set API Key
+                        去配置 API 密钥
                       </button>
                     </div>
                   </div>
@@ -1176,18 +1171,18 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                   {/* App Identity */}
                   <div className="text-center space-y-2">
                     <h3 className="text-lg font-bold text-white">剪艾 JianAI</h3>
-                    <p className="text-sm text-zinc-400">Version {appVersion || '...'}</p>
-                    <p className="text-xs text-zinc-500">AI-Powered Video Editor</p>
+                    <p className="text-sm text-zinc-400">版本 {appVersion || '...'}</p>
+                    <p className="text-xs text-zinc-500">AI 驱动的视频剪辑工具</p>
                   </div>
 
                   {/* License */}
                   <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
                     <div className="flex items-center gap-2">
                       <Info className="h-4 w-4 text-blue-400" />
-                      <span className="text-sm font-medium text-white">License</span>
+                      <span className="text-sm font-medium text-white">许可证</span>
                     </div>
                     <p className="text-xs text-zinc-400">
-                      Licensed under the Apache License, Version 2.0
+                      基于 Apache License 2.0 许可证发布
                     </p>
                   </div>
 
@@ -1208,7 +1203,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       disabled={modelLicenseLoading}
                       className="w-full bg-zinc-700 hover:bg-zinc-600 text-white text-xs"
                     >
-                      {modelLicenseLoading ? 'Loading...' : 'View Model License'}
+                      {modelLicenseLoading ? '加载中...' : '查看模型许可证'}
                     </Button>
                   </div>
 
@@ -1221,10 +1216,10 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                         <line x1="16" y1="13" x2="8" y2="13" />
                         <line x1="16" y1="17" x2="8" y2="17" />
                       </svg>
-                      <span className="text-sm font-medium text-white">Third-Party Notices</span>
+                      <span className="text-sm font-medium text-white">第三方声明</span>
                     </div>
                     <p className="text-xs text-zinc-400">
-                      This application uses open-source software and AI models subject to their own license terms.
+                      本应用使用了开源软件和 AI 模型，它们分别适用各自的许可证条款。
                     </p>
                     <Button
                       size="sm"
@@ -1232,7 +1227,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       disabled={noticesLoading}
                       className="w-full bg-zinc-700 hover:bg-zinc-600 text-white text-xs"
                     >
-                      {noticesLoading ? 'Loading...' : 'View Third-Party Notices'}
+                      {noticesLoading ? '加载中...' : '查看第三方声明'}
                     </Button>
                   </div>
 
@@ -1252,7 +1247,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
             onClick={onClose}
             className="bg-zinc-700 hover:bg-zinc-600 text-white"
           >
-            Done
+            完成
           </Button>
         </div>
       </div>

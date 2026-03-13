@@ -172,10 +172,10 @@ export function ClipContextMenu({
           ════════════════════════════════════════════════ */}
       {isBackground ? (
         <>
-          <MenuItem icon={Clipboard} label="Paste" shortcut="Ctrl+V" disabled={!hasClipboard}
+          <MenuItem icon={Clipboard} label="粘贴" shortcut="Ctrl+V" disabled={!hasClipboard}
             onClick={() => { handlePaste(); close() }} />
           <Divider />
-          <MenuItem icon={Type} iconClass="text-cyan-400" label="Add Text"
+          <MenuItem icon={Type} iconClass="text-cyan-400" label="添加文字"
             onClick={() => { addTextClip(undefined, currentTime); close() }} />
           {TEXT_PRESETS.slice(0, 4).map(preset => (
             <button
@@ -188,7 +188,7 @@ export function ClipContextMenu({
             </button>
           ))}
           <Divider />
-          <MenuItem icon={Layers} label="Select All" shortcut="Ctrl+A"
+          <MenuItem icon={Layers} label="全选" shortcut="Ctrl+A"
             onClick={() => { setSelectedClipIds(new Set(clips.map(c => c.id))); close() }} />
         </>
       ) : multiSelected ? (
@@ -326,20 +326,20 @@ function SingleClipMenu({
   return (
     <>
       {/* ── 1. Clipboard ── */}
-      <MenuItem icon={Scissors} label="Cut" shortcut="Ctrl+X" onClick={() => { handleCut(); close() }} />
-      <MenuItem icon={Copy} label="Copy" shortcut="Ctrl+C" onClick={() => { handleCopy(); close() }} />
-      <MenuItem icon={Clipboard} label="Paste" shortcut="Ctrl+V" disabled={!hasClipboard} onClick={() => { handlePaste(); close() }} />
+      <MenuItem icon={Scissors} label="剪切" shortcut="Ctrl+X" onClick={() => { handleCut(); close() }} />
+      <MenuItem icon={Copy} label="复制" shortcut="Ctrl+C" onClick={() => { handleCopy(); close() }} />
+      <MenuItem icon={Clipboard} label="粘贴" shortcut="Ctrl+V" disabled={!hasClipboard} onClick={() => { handlePaste(); close() }} />
 
       <Divider />
 
       {/* ── 2. Edit ── */}
-      <MenuItem icon={Copy} label="Duplicate" onClick={() => { duplicateClip(contextClip.id); close() }} />
-      <MenuItem icon={Scissors} label="Split at Playhead" shortcut="B" onClick={() => { splitClipAtPlayhead(contextClip.id); close() }} />
+      <MenuItem icon={Copy} label="复制片段" onClick={() => { duplicateClip(contextClip.id); close() }} />
+      <MenuItem icon={Scissors} label="在播放头处分割" shortcut="B" onClick={() => { splitClipAtPlayhead(contextClip.id); close() }} />
 
       <Divider />
 
       {/* ── 3. Properties ── */}
-      <SectionLabel>Speed</SectionLabel>
+      <SectionLabel>速度</SectionLabel>
       <div className="flex items-center gap-1 px-3 py-1">
         {[0.25, 0.5, 1, 1.5, 2, 4].map(speed => (
           <button
@@ -363,30 +363,30 @@ function SingleClipMenu({
           </button>
         ))}
       </div>
-      <MenuItem icon={RotateCcw} label="Reverse"
-        badge={contextClip.reversed ? 'ON' : undefined} badgeClass="text-blue-400"
+      <MenuItem icon={RotateCcw} label="倒放"
+        badge={contextClip.reversed ? '已开启' : undefined} badgeClass="text-blue-400"
         onClick={() => { updateClip(contextClip.id, { reversed: !contextClip.reversed }); close() }} />
       <MenuItem
         icon={contextClip.muted ? VolumeX : Volume2}
-        label={contextClip.muted ? 'Unmute' : 'Mute'}
-        badge={contextClip.muted ? 'MUTED' : undefined} badgeClass="text-red-400"
+        label={contextClip.muted ? '取消静音' : '静音'}
+        badge={contextClip.muted ? '已静音' : undefined} badgeClass="text-red-400"
         onClick={() => { updateClip(contextClip.id, { muted: !contextClip.muted }); close() }} />
 
       <Divider />
 
       {/* ── 4. Transform ── */}
-      <MenuItem icon={FlipHorizontal2} label="Flip Horizontal"
-        badge={contextClip.flipH ? 'ON' : undefined} badgeClass="text-cyan-400"
+      <MenuItem icon={FlipHorizontal2} label="水平翻转"
+        badge={contextClip.flipH ? '已开启' : undefined} badgeClass="text-cyan-400"
         onClick={() => { updateClip(contextClip.id, { flipH: !contextClip.flipH }); close() }} />
-      <MenuItem icon={FlipVertical2} label="Flip Vertical"
-        badge={contextClip.flipV ? 'ON' : undefined} badgeClass="text-cyan-400"
+      <MenuItem icon={FlipVertical2} label="垂直翻转"
+        badge={contextClip.flipV ? '已开启' : undefined} badgeClass="text-cyan-400"
         onClick={() => { updateClip(contextClip.id, { flipV: !contextClip.flipV }); close() }} />
 
       <Divider />
 
       {/* ── 5. Structure (Link / Track) ── */}
       {contextClip.linkedClipIds?.length ? (
-        <MenuItem icon={Unlink2} label="Unlink Audio" onClick={() => {
+        <MenuItem icon={Unlink2} label="取消音频链接" onClick={() => {
           pushUndo()
           const allLinked = new Set(contextClip.linkedClipIds!)
           setClips(prev => prev.map(c => {
@@ -408,7 +408,7 @@ function SingleClipMenu({
         )
         if (!candidates.length) return null
         return (
-          <MenuItem icon={Link2} label="Link Audio" onClick={() => {
+          <MenuItem icon={Link2} label="链接音频" onClick={() => {
             pushUndo()
             const candidateIds = candidates.map(c => c.id)
             setClips(prev => prev.map(c => {
@@ -423,7 +423,7 @@ function SingleClipMenu({
 
       {/* ── 6. Color Label ── */}
       <Divider />
-      <SectionLabel>Label</SectionLabel>
+      <SectionLabel>颜色标签</SectionLabel>
       <div className="px-3 py-1.5 flex items-center gap-1 flex-wrap">
         <button
           onClick={() => {
@@ -440,7 +440,7 @@ function SingleClipMenu({
           className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
             !contextClip.colorLabel ? 'border-white scale-110' : 'border-zinc-600 hover:border-zinc-400'
           }`}
-          title="No label"
+          title="无标签"
         >
           <X className="h-2 w-2 text-zinc-400" />
         </button>
@@ -471,19 +471,19 @@ function SingleClipMenu({
       {hasAI && (
         <>
           <Divider />
-          <SectionLabel>AI Tools</SectionLabel>
+          <SectionLabel>AI 工具</SectionLabel>
 
           {contextClip.isRegenerating ? (
-            <MenuItem icon={X} iconClass="text-red-400" label="Cancel Regeneration" onClick={() => { handleCancelRegeneration(); close() }} />
+            <MenuItem icon={X} iconClass="text-red-400" label="取消重新生成" onClick={() => { handleCancelRegeneration(); close() }} />
           ) : (
-            <MenuItem icon={RefreshCw} iconClass="text-blue-400" label="Regenerate Shot"
+            <MenuItem icon={RefreshCw} iconClass="text-blue-400" label="重新生成镜头"
               disabled={isRegenerating} onClick={() => { handleRegenerate(contextClip.assetId!, contextClip.id); close() }} />
           )}
 
           {/* Take navigation */}
           {liveAsset!.takes && liveAsset!.takes.length > 1 && (
             <div className="px-3 py-1 flex items-center gap-2">
-              <span className="text-[10px] text-zinc-500 flex-shrink-0">Take:</span>
+              <span className="text-[10px] text-zinc-500 flex-shrink-0">版本：</span>
               <button onClick={(e) => { e.stopPropagation(); handleClipTakeChange(contextClip.id, 'prev') }}
                 className="p-0.5 rounded hover:bg-zinc-600 text-zinc-400 hover:text-white">
                 <ChevronLeft className="h-3 w-3" />
@@ -498,12 +498,12 @@ function SingleClipMenu({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (confirm(`Delete take ${(contextClip.takeIndex ?? (liveAsset!.activeTakeIndex ?? liveAsset!.takes!.length - 1)) + 1}?`)) {
+                  if (confirm(`删除版本 ${(contextClip.takeIndex ?? (liveAsset!.activeTakeIndex ?? liveAsset!.takes!.length - 1)) + 1}？`)) {
                     handleDeleteTake(contextClip.id)
                   }
                 }}
                 className="p-0.5 rounded hover:bg-red-900/50 text-zinc-500 hover:text-red-400 ml-auto"
-                title="Delete this take"
+                title="删除当前版本"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -511,20 +511,20 @@ function SingleClipMenu({
           )}
 
           {isVideo && contextClip.assetId && (
-            <MenuItem icon={ZoomIn} iconClass="text-zinc-500" label="Upscale (2x)"
-              disabled={true} title="Coming Soon!" onClick={() => {}} />
+            <MenuItem icon={ZoomIn} iconClass="text-zinc-500" label="超分辨率（2x）"
+              disabled={true} title="即将推出" onClick={() => {}} />
           )}
           {isImage && (
-            <MenuItem icon={Film} iconClass="text-blue-400" label="Image to Video (I2V)"
+            <MenuItem icon={Film} iconClass="text-blue-400" label="图片转视频（I2V）"
               disabled={isRegenerating && i2vClipId === contextClip.id}
               onClick={() => { setI2vClipId(contextClip.id); setI2vPrompt(contextClip.asset?.prompt || ''); close() }} />
           )}
           {isVideo && contextClip.assetId && (
             <>
-              <MenuItem icon={Film} iconClass="text-blue-400" label="Retake Section"
+              <MenuItem icon={Film} iconClass="text-blue-400" label="片段重拍"
                 onClick={() => { onRetakeClip(contextClip); close() }} />
               {canUseIcLora && (
-                <MenuItem icon={Sparkles} iconClass="text-amber-400" label="IC-LoRA / Style Transfer"
+                <MenuItem icon={Sparkles} iconClass="text-amber-400" label="IC-LoRA / 风格迁移"
                   onClick={() => { onICLoraClip(contextClip); close() }} />
               )}
             </>
@@ -533,7 +533,7 @@ function SingleClipMenu({
             <MenuItem
               icon={Film}
               iconClass="text-emerald-400"
-              label="Create Video (A2V)"
+              label="从音频生成视频（A2V）"
               onClick={() => { onCreateVideoFromAudio(contextClip); close() }}
             />
           )}
@@ -543,14 +543,14 @@ function SingleClipMenu({
                 className="w-full text-left px-3 py-1.5 flex items-center gap-3 transition-colors hover:bg-zinc-700 text-zinc-300"
               >
                 <Camera className="h-3.5 w-3.5 flex-shrink-0 text-amber-400" />
-                <span className="flex-1 truncate">Use Frame As...</span>
+                <span className="flex-1 truncate">将当前帧用作...</span>
                 <ChevronRight className="h-3 w-3 text-zinc-500" />
               </button>
               <div className="absolute left-full top-0 ml-0.5 min-w-[200px] bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl py-1 z-[70] hidden group-hover/capture:block">
-                <MenuItem icon={Video} iconClass="text-blue-400" label="Generate Video in Gen Space"
+                <MenuItem icon={Video} iconClass="text-blue-400" label="在创作空间生成视频"
                   onClick={() => { onCaptureFrameForVideo(contextClip); close() }} />
                 {isImage && (
-                  <MenuItem icon={Film} iconClass="text-blue-400" label="Image to Video (I2V)"
+                  <MenuItem icon={Film} iconClass="text-blue-400" label="图片转视频（I2V）"
                     disabled={isRegenerating && i2vClipId === contextClip.id}
                     onClick={() => { setI2vClipId(contextClip.id); setI2vPrompt(contextClip.asset?.prompt || ''); close() }} />
                 )}
@@ -565,7 +565,7 @@ function SingleClipMenu({
         <>
           <Divider />
           {contextClip.assetId && (
-            <MenuItem icon={Eye} label="Reveal in Assets" onClick={() => {
+            <MenuItem icon={Eye} label="在素材区中定位" onClick={() => {
               const asset = assets.find(a => a.id === contextClip.assetId)
               if (asset) {
                 setAssetFilter('all'); setSelectedBin(asset.bin ?? null)
@@ -586,9 +586,9 @@ function SingleClipMenu({
               filePath = liveAsset.takes[Math.max(0, Math.min(takeIdx, liveAsset.takes.length - 1))].path
             }
             if (!filePath) return null
-            const label = window.electronAPI?.platform === 'darwin' ? 'Reveal in Finder'
-              : window.electronAPI?.platform === 'linux' ? 'Show in Files'
-              : 'Show in Explorer'
+            const label = window.electronAPI?.platform === 'darwin' ? '在访达中显示'
+              : window.electronAPI?.platform === 'linux' ? '在文件管理器中显示'
+              : '在资源管理器中显示'
             return <MenuItem icon={FolderOpen} label={label} onClick={() => { window.electronAPI?.showItemInFolder(filePath); close() }} />
           })()}
         </>
@@ -596,7 +596,7 @@ function SingleClipMenu({
 
       {/* ── 8. Delete (always last, always red) ── */}
       <Divider />
-      <MenuItem icon={Trash2} label="Delete" shortcut="Del" danger onClick={() => { removeClip(contextClip.id); close() }} />
+      <MenuItem icon={Trash2} label="删除" shortcut="Del" danger onClick={() => { removeClip(contextClip.id); close() }} />
     </>
   )
 }
@@ -648,17 +648,17 @@ function MultiClipMenu({
   return (
     <>
       {/* ── Header ── */}
-      <SectionLabel>{n} Clips Selected</SectionLabel>
+      <SectionLabel>已选中 {n} 个片段</SectionLabel>
 
       {/* ── 1. Clipboard ── */}
-      <MenuItem icon={Scissors} label={`Cut ${n} Clips`} shortcut="Ctrl+X" onClick={() => { handleCut(); close() }} />
-      <MenuItem icon={Copy} label={`Copy ${n} Clips`} shortcut="Ctrl+C" onClick={() => { handleCopy(); close() }} />
-      <MenuItem icon={Clipboard} label="Paste" shortcut="Ctrl+V" disabled={!hasClipboard} onClick={() => { handlePaste(); close() }} />
+      <MenuItem icon={Scissors} label={`剪切 ${n} 个片段`} shortcut="Ctrl+X" onClick={() => { handleCut(); close() }} />
+      <MenuItem icon={Copy} label={`复制 ${n} 个片段`} shortcut="Ctrl+C" onClick={() => { handleCopy(); close() }} />
+      <MenuItem icon={Clipboard} label="粘贴" shortcut="Ctrl+V" disabled={!hasClipboard} onClick={() => { handlePaste(); close() }} />
 
       <Divider />
 
       {/* ── 2. Properties ── */}
-      <SectionLabel>Speed</SectionLabel>
+      <SectionLabel>速度</SectionLabel>
       <div className="flex items-center gap-1 px-3 py-1">
         {[0.25, 0.5, 1, 1.5, 2, 4].map(speed => (
           <button
@@ -682,28 +682,28 @@ function MultiClipMenu({
           </button>
         ))}
       </div>
-      <MenuItem icon={allMuted ? VolumeX : Volume2} label={allMuted ? 'Unmute All' : 'Mute All'}
-        badge={allMuted ? 'ALL MUTED' : undefined} badgeClass="text-red-400"
+      <MenuItem icon={allMuted ? VolumeX : Volume2} label={allMuted ? '全部取消静音' : '全部静音'}
+        badge={allMuted ? '均已静音' : undefined} badgeClass="text-red-400"
         onClick={() => batchUpdate({ muted: !allMuted })} />
-      <MenuItem icon={RotateCcw} label={allReversed ? 'Un-reverse All' : 'Reverse All'}
-        badge={allReversed ? 'ALL ON' : undefined} badgeClass="text-blue-400"
+      <MenuItem icon={RotateCcw} label={allReversed ? '全部取消倒放' : '全部倒放'}
+        badge={allReversed ? '均已开启' : undefined} badgeClass="text-blue-400"
         onClick={() => batchUpdate({ reversed: !allReversed })} />
 
       <Divider />
 
       {/* ── 3. Transform ── */}
-      <MenuItem icon={FlipHorizontal2} label={allFlipH ? 'Un-flip All Horizontal' : 'Flip All Horizontal'}
-        badge={allFlipH ? 'ALL ON' : undefined} badgeClass="text-cyan-400"
+      <MenuItem icon={FlipHorizontal2} label={allFlipH ? '全部取消水平翻转' : '全部水平翻转'}
+        badge={allFlipH ? '均已开启' : undefined} badgeClass="text-cyan-400"
         onClick={() => batchUpdate({ flipH: !allFlipH })} />
-      <MenuItem icon={FlipVertical2} label={allFlipV ? 'Un-flip All Vertical' : 'Flip All Vertical'}
-        badge={allFlipV ? 'ALL ON' : undefined} badgeClass="text-cyan-400"
+      <MenuItem icon={FlipVertical2} label={allFlipV ? '全部取消垂直翻转' : '全部垂直翻转'}
+        badge={allFlipV ? '均已开启' : undefined} badgeClass="text-cyan-400"
         onClick={() => batchUpdate({ flipV: !allFlipV })} />
 
       <Divider />
 
       {/* ── 4. Structure ── */}
       {anyLinked && (
-        <MenuItem icon={Unlink2} label="Unlink" onClick={() => {
+        <MenuItem icon={Unlink2} label="取消链接" onClick={() => {
           pushUndo()
           const selIds = new Set(selectedClipIds)
           setClips(prev => prev.map(c => {
@@ -715,7 +715,7 @@ function MultiClipMenu({
         }} />
       )}
       {hasVideoAndAudio && !allFullyLinked && (
-        <MenuItem icon={Link2} label="Link" onClick={() => {
+        <MenuItem icon={Link2} label="链接" onClick={() => {
           pushUndo()
           const selIds = [...selectedClipIds]
           setClips(prev => prev.map(c => {
@@ -731,7 +731,7 @@ function MultiClipMenu({
 
       {/* ── 5. Color Label ── */}
       <Divider />
-      <SectionLabel>Label</SectionLabel>
+      <SectionLabel>颜色标签</SectionLabel>
       <div className="px-3 py-1.5 flex items-center gap-1 flex-wrap">
         <button
           onClick={() => {
@@ -750,7 +750,7 @@ function MultiClipMenu({
             close()
           }}
           className="w-4 h-4 rounded-full border-2 border-zinc-600 hover:border-zinc-400 flex items-center justify-center transition-all"
-          title="No label"
+          title="无标签"
         >
           <X className="h-2 w-2 text-zinc-400" />
         </button>
@@ -781,7 +781,7 @@ function MultiClipMenu({
 
       {/* ── 6. Delete ── */}
       <Divider />
-      <MenuItem icon={Trash2} label={`Delete ${n} Clips`} shortcut="Del" danger onClick={() => {
+      <MenuItem icon={Trash2} label={`删除 ${n} 个片段`} shortcut="Del" danger onClick={() => {
         pushUndo()
         setClips(prev => prev.filter(c => !selectedClipIds.has(c.id)).map(c => {
           if (!c.linkedClipIds) return c

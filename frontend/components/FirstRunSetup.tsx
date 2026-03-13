@@ -31,14 +31,14 @@ interface RequiredModelsResponse {
 
 // Fun loading messages
 const INSTALL_MESSAGES = [
-  "Downloading model weights...",
-  "Teaching AI to dream in 4K...",
-  "Loading neural pathways...",
-  "Calibrating inference engine...",
-  "Almost there...",
-  "Unpacking the magic...",
-  "Configuring parameters...",
-  "Finalizing installation..."
+  '正在下载模型权重...',
+  '正在让 AI 学会做 4K 梦...',
+  '正在加载神经网络路径...',
+  '正在校准推理引擎...',
+  '马上就好...',
+  '正在解压核心组件...',
+  '正在配置参数...',
+  '正在完成安装...'
 ]
 
 
@@ -98,7 +98,7 @@ export function LaunchGate({
       const text = await window.electronAPI.fetchLicenseText()
       setLicenseText(text)
     } catch (e) {
-      setLicenseError(e instanceof Error ? e.message : 'Failed to fetch license text.')
+      setLicenseError(e instanceof Error ? e.message : '获取许可证文本失败。')
     }
   }
 
@@ -217,7 +217,7 @@ export function LaunchGate({
       }
     } catch (e) {
       logger.error(`Download start error: ${e}`)
-      setDownloadError(e instanceof Error ? e.message : 'Failed to start model download.')
+      setDownloadError(e instanceof Error ? e.message : '启动模型下载失败。')
     }
   }
 
@@ -242,7 +242,7 @@ export function LaunchGate({
         }
         setCurrentStep('location')
       } catch (e) {
-        setActionError(e instanceof Error ? e.message : 'Failed to accept license.')
+        setActionError(e instanceof Error ? e.message : '接受许可证失败。')
       } finally {
         setIsActionPending(false)
       }
@@ -263,7 +263,7 @@ export function LaunchGate({
     try {
       await onComplete()
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to complete setup.')
+      setActionError(e instanceof Error ? e.message : '完成初始化失败。')
     } finally {
       setIsActionPending(false)
     }
@@ -271,10 +271,10 @@ export function LaunchGate({
 
   // Get button text
   const getNextButtonText = () => {
-    if (currentStep === 'license') return licenseOnly ? 'Accept' : 'Next'
-    if (currentStep === 'location') return 'Install'
-    if (currentStep === 'complete') return 'Finish'
-    return 'Continue'
+    if (currentStep === 'license') return licenseOnly ? '接受' : '下一步'
+    if (currentStep === 'location') return '安装'
+    if (currentStep === 'complete') return '完成'
+    return '继续'
   }
 
   // Check if next button should be disabled
@@ -325,7 +325,7 @@ export function LaunchGate({
               <path d="M36.5888 31.9926C34.4062 31.9876 32.492 31.6543 30.8413 30.9878C29.1906 30.3214 27.9104 29.2346 26.9981 27.7227C26.0856 26.2132 25.6333 24.2137 25.6382 21.7269L25.6532 13.7194L21.7016 13.7119C21.3486 13.7119 21.0528 13.5876 20.8116 13.3365C20.5705 13.0853 20.4512 12.7819 20.4537 12.4164L20.4636 7.39299C20.4636 7.02744 20.5854 6.72154 20.8265 6.47288C21.0677 6.22422 21.3635 6.09983 21.7165 6.10233L25.6681 6.10983L25.6779 1.29066C25.6779 0.925114 25.7998 0.619208 26.041 0.370548C26.2821 0.121887 26.5779 0 26.9309 0L33.9065 0.0124913C34.2595 0.0124913 34.5554 0.136772 34.7965 0.387931C35.0376 0.639089 35.1569 0.944995 35.1545 1.30805L35.1445 6.12721L41.2078 6.13959C41.5608 6.13959 41.8566 6.26398 42.0977 6.51514C42.3389 6.76629 42.4582 7.0722 42.4557 7.43525L42.4458 12.4586C42.4458 12.8242 42.3239 13.1301 42.0829 13.3787C41.8417 13.6274 41.5434 13.7518 41.1928 13.7493L35.1296 13.7368L35.1171 20.8988C35.1171 21.8613 35.3061 22.6148 35.6914 23.1618C36.0767 23.7089 36.6833 23.985 37.5186 23.985L41.5608 23.9925C41.9138 23.9925 42.2096 24.1168 42.4507 24.368C42.6919 24.6192 42.8113 24.9251 42.8088 25.2881L42.7988 30.7093C42.7988 31.075 42.677 31.3808 42.4358 31.6294C42.1947 31.8782 41.8963 32.0025 41.5459 32L36.5913 31.9901L36.5888 31.9926Z" fill="white"/>
               <path d="M47.5486 31.9851C47.2282 31.9851 46.965 31.8682 46.7589 31.6369C46.5503 31.4056 46.4485 31.1395 46.4485 30.841C46.4485 30.7416 46.4634 30.6248 46.4957 30.4929C46.5279 30.3611 46.5926 30.2268 46.6869 30.0951L54.3506 18.9342C54.4648 18.7675 54.4673 18.5463 54.3556 18.3771L47.4543 8.01457C47.3896 7.91517 47.335 7.79827 47.2854 7.6664C47.2382 7.53463 47.2133 7.40036 47.2133 7.26859C47.2133 6.97017 47.3251 6.70403 47.5486 6.47275C47.7722 6.24147 48.0279 6.12458 48.316 6.12458H55.6444C56.0914 6.12458 56.4267 6.23158 56.6501 6.44787C56.8737 6.66426 57.0327 6.85328 57.1295 7.01993L60.3082 11.8169C60.5043 12.1128 60.939 12.1128 61.1352 11.8169L64.3139 7.01993C64.4405 6.85328 64.6094 6.66426 64.8156 6.44787C65.0216 6.23158 65.3494 6.12458 65.7964 6.12458H72.7896C73.0778 6.12458 73.331 6.24147 73.557 6.47275C73.7805 6.70403 73.8922 6.95268 73.8922 7.21883C73.8922 7.38547 73.8748 7.53463 73.8451 7.6664C73.8128 7.79827 73.7482 7.91517 73.6539 8.01457L66.6159 18.3747C66.4992 18.5463 66.5017 18.77 66.6209 18.9392L74.4212 30.0975C74.5181 30.2293 74.5801 30.3636 74.6124 30.4954C74.6448 30.6273 74.6596 30.744 74.6596 30.8435C74.6596 31.142 74.5479 31.4081 74.3244 31.6394C74.1008 31.8707 73.8451 31.9874 73.557 31.9874H65.8934C65.4786 31.9874 65.1756 31.888 64.9844 31.689C64.7932 31.4901 64.6317 31.3086 64.5051 31.142L60.9886 25.9544C60.7924 25.671 60.3753 25.6685 60.1766 25.9471L56.4118 31.1395C56.3149 31.3061 56.1634 31.4876 55.9573 31.6865C55.7488 31.8855 55.4383 31.9851 55.0236 31.9851H47.5486Z" fill="white"/>
             </svg>
-            <span style={{ fontSize: 14, color: '#71717a', fontWeight: 500, letterSpacing: '0.02em', paddingTop: 2, paddingLeft: 6 }}>Desktop</span>
+            <span style={{ fontSize: 14, color: '#71717a', fontWeight: 500, letterSpacing: '0.02em', paddingTop: 2, paddingLeft: 6 }}>桌面版</span>
           </div>
         </div>
 
@@ -346,10 +346,10 @@ export function LaunchGate({
                 fontWeight: 700,
                 marginBottom: 6
               }}>
-                LTX-2 Model License
+                LTX-2 模型许可证
               </h2>
               <p style={{ color: '#a0a0a0', fontSize: 14, marginBottom: 16 }}>
-                The LTX-2 model is subject to the following license agreement. Please review and accept before downloading.
+                LTX-2 模型受以下许可协议约束。下载前请先阅读并接受。
               </p>
 
               <div style={{
@@ -393,7 +393,7 @@ export function LaunchGate({
                           color: '#ffffff',
                         }}
                       >
-                        Retry
+                        重试
                       </button>
                     </div>
                   ) : licenseText === null ? (
@@ -407,7 +407,7 @@ export function LaunchGate({
                       <svg width="20" height="20" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
                         <circle cx="12" cy="12" r="10" stroke="#6D28D9" strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
                       </svg>
-                      <span style={{ color: '#a0a0a0', fontSize: 13 }}>Loading license...</span>
+                      <span style={{ color: '#a0a0a0', fontSize: 13 }}>正在加载许可证...</span>
                     </div>
                   ) : (
                     <div style={{
@@ -454,7 +454,7 @@ export function LaunchGate({
                       flexShrink: 0
                     }}
                   />
-                  <span>I have read and agree to the LTX-2 Community License Agreement</span>
+                  <span>我已阅读并同意 LTX-2 社区许可证协议</span>
                 </label>
               </div>
             </div>
@@ -469,10 +469,10 @@ export function LaunchGate({
                 fontWeight: 700,
                 marginBottom: 6
               }}>
-                Choose Location
+                选择安装位置
               </h2>
               <p style={{ color: '#a0a0a0', fontSize: 14, marginBottom: 24 }}>
-                Select where to install the model files.
+                选择模型文件的安装目录。
               </p>
 
               <div style={{
@@ -515,7 +515,7 @@ export function LaunchGate({
                       transition: 'all 0.2s ease'
                     }}
                   >
-                    Browse
+                    浏览
                   </button>
                 </div>
 
@@ -526,7 +526,7 @@ export function LaunchGate({
                   color: '#a0a0a0',
                   marginTop: 10
                 }}>
-                  <span>Available: <strong style={{ color: '#fff' }}>{availableSpace}</strong></span>
+                  <span>可用空间：<strong style={{ color: '#fff' }}>{availableSpace}</strong></span>
                 </div>
               </div>
 
@@ -539,14 +539,14 @@ export function LaunchGate({
               }}>
                 <div style={{ marginBottom: 8 }}>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>
-                    LTX API Key
+                    LTX API 密钥
                     <span style={{
                       fontSize: 11,
                       color: '#A98BD9',
                       marginLeft: 8,
                       fontWeight: 400
                     }}>
-                      Optional - Saves ~25 GB download
+                      可选，可节省约 25 GB 下载
                     </span>
                   </label>
                 </div>
@@ -554,7 +554,7 @@ export function LaunchGate({
                   type="password"
                   value={ltxApiKey}
                   onChange={(e) => setLtxApiKey(e.target.value)}
-                  placeholder="Enter API key to skip text encoder download..."
+                  placeholder="输入 API 密钥可跳过文本编码器下载..."
                   style={{
                     width: '100%',
                     background: '#1a1a1a',
@@ -569,11 +569,11 @@ export function LaunchGate({
                 <p style={{ fontSize: 11, color: '#888', marginTop: 8 }}>
                   {ltxApiKey ? (
                     <span style={{ color: '#6D28D9' }}>
-                      ✓ Text encoder download will be skipped (using API instead)
+                      ✓ 将跳过文本编码器下载（改为使用 API）
                     </span>
                   ) : (
-                    'If you have an LTX API key, entering it here skips the 25 GB text encoder download. ' +
-                    'The API provides faster text encoding (~1s vs 23s local).'
+                    '如果你有 LTX API 密钥，在这里填写即可跳过 25 GB 的文本编码器下载。' +
+                    'API 文本编码速度也更快（约 1 秒，对比本地约 23 秒）。'
                   )}
                 </p>
               </div>
@@ -669,7 +669,7 @@ export function LaunchGate({
                         color: '#ffffff',
                       }}
                     >
-                      Back
+                      返回
                     </button>
                     <button
                       onClick={retryInstallation}
@@ -684,7 +684,7 @@ export function LaunchGate({
                         color: '#ffffff',
                       }}
                     >
-                      Retry
+                      重试
                     </button>
                   </div>
                 </div>
@@ -698,7 +698,7 @@ export function LaunchGate({
                   marginBottom: 8
                 }}>
                   <span style={{ fontSize: 13, fontWeight: 500 }}>
-                    {(downloadProgress?.total_progress || 0) > 85 ? 'Installing...' : 'Downloading...'}
+                    {(downloadProgress?.total_progress || 0) > 85 ? '正在安装...' : '正在下载...'}
                   </span>
                   <span style={{ fontSize: 13, color: '#A98BD9', fontWeight: 600 }}>
                     {downloadProgress?.total_progress || 0}%
@@ -764,7 +764,7 @@ export function LaunchGate({
                     fontSize: 11,
                     color: '#666'
                   }}>
-                    File {downloadProgress.completed_files.length + 1} of {downloadProgress.all_files.length}
+                    文件 {downloadProgress.completed_files.length + 1} / {downloadProgress.all_files.length}
                   </div>
                 )}
               </>
@@ -806,10 +806,10 @@ export function LaunchGate({
                 fontWeight: 700,
                 marginBottom: 8
               }}>
-                Ready to Create
+                可以开始创作了
               </h2>
               <p style={{ color: '#a0a0a0', fontSize: 14, maxWidth: 320 }}>
-                LTX Video is installed. Start generating.
+                剪艾所需组件已安装完成，现在可以开始创作。
               </p>
 
               {/* Install Summary */}
@@ -827,7 +827,7 @@ export function LaunchGate({
                   padding: '8px 0',
                   fontSize: 13
                 }}>
-                  <span style={{ color: '#a0a0a0' }}>Location</span>
+                  <span style={{ color: '#a0a0a0' }}>安装位置</span>
                   <span style={{ fontWeight: 500, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {installPath.split('\\').pop() || installPath}
                   </span>
@@ -845,7 +845,7 @@ export function LaunchGate({
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ fontSize: 11, color: '#666' }}>© 2026 Lightricks</div>
+          <div style={{ fontSize: 11, color: '#666' }}>© 2026 JianAI</div>
 
           <div style={{ display: 'flex', gap: 10 }}>
             {/* Next/Install/Finish Button */}

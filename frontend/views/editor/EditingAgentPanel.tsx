@@ -211,7 +211,7 @@ export function EditingAgentPanel({
     }))
     const clipTags = selectedTimelineClips.map((clip) => {
       const clipName = clip.type === 'text'
-        ? clip.textStyle?.text || 'Text'
+        ? clip.textStyle?.text || '文字'
         : clip.importedName || clip.asset?.prompt || clip.type
       return {
         id: `clip-${clip.id}`,
@@ -568,7 +568,7 @@ export function EditingAgentPanel({
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Timeline Agent</h3>
+            <h3 className="text-sm font-semibold text-white">时间线智能助理</h3>
             <p className="text-[11px] text-zinc-500">真实 AI 输出结构化 actions，再修改时间线 JSON 状态</p>
           </div>
           <button

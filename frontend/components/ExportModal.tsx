@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { X, Download, FolderOpen, Film, Package, Loader2, Check, AlertCircle, ChevronDown } from 'lucide-react'
 import { Button } from './ui/button'
 import type { Track, Timeline, TimelineClip } from '../types/project'
-import { DEFAULT_SUBTITLE_STYLE } from '../types/project'
+import { DEFAULT_SUBTITLE_STYLE, DEFAULT_TEXT_STYLE } from '../types/project'
 
 interface ExportModalProps {
   open: boolean
@@ -25,9 +25,9 @@ interface ExportSettings {
 }
 
 const CODEC_INFO: Record<ExportCodec, { label: string; ext: string; description: string; filterName: string }> = {
-  h264: { label: 'H.264 / MP4', ext: 'mp4', description: 'Most compatible format', filterName: 'MP4 Video' },
-  prores: { label: 'ProRes / MOV', ext: 'mov', description: 'Professional editing format', filterName: 'QuickTime Movie' },
-  vp9: { label: 'VP9 / WebM', ext: 'webm', description: 'Web-optimized format', filterName: 'WebM Video' },
+  h264: { label: 'H.264 / MP4', ext: 'mp4', description: '兼容性最佳', filterName: 'MP4 视频' },
+  prores: { label: 'ProRes / MOV', ext: 'mov', description: '专业剪辑格式', filterName: 'QuickTime 影片' },
+  vp9: { label: 'VP9 / WebM', ext: 'webm', description: '适合网页发布', filterName: 'WebM 视频' },
 }
 
 const RESOLUTIONS = [
@@ -41,7 +41,7 @@ const FRAME_RATES = [24, 25, 30, 60]
 const PRORES_PROFILES = [
   { value: 0, label: 'Proxy' },
   { value: 1, label: 'LT' },
-  { value: 2, label: 'Standard' },
+  { value: 2, label: '标准' },
   { value: 3, label: 'HQ' },
 ]
 
@@ -201,11 +201,11 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
 
     try {
       const filePath = await window.electronAPI?.showSaveDialog({
-        title: 'Export FCPXML Package',
+        title: '导出 FCPXML 工程包',
         defaultPath: `${projectName}_${timeline.name}.fcpxml`,
         filters: [
           { name: 'Final Cut Pro XML', extensions: ['fcpxml'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: '所有文件', extensions: ['*'] },
         ],
       })
 
@@ -222,7 +222,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
         setExportPath(filePath)
         setExportStatus('done')
       } else {
-        throw new Error(result?.error || 'Failed to save file')
+        throw new Error(result?.error || '保存文件失败')
       }
     } catch (err) {
       setExportError(String(err))
@@ -236,7 +236,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
     setExportStatus('exporting')
     setExportProgress(0)
     setExportError(null)
-    setExportFrameInfo('Preparing...')
+    setExportFrameInfo('正在准备...')
     abortRef.current = false
 
     try {
@@ -247,7 +247,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
         defaultPath: `${projectName}_${timeline.name}.${codecInfo.ext}`,
         filters: [
           { name: codecInfo.filterName, extensions: [codecInfo.ext] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: '所有文件', extensions: ['*'] },
         ],
       })
 
@@ -283,7 +283,35 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
         return { text: sub.text, startTime: sub.startTime, endTime: sub.endTime, style }
       }) : []
 
-      setExportFrameInfo('Starting ffmpeg...')
+      const textOverlayData = clips
+        .filter(c => c.type === 'text' && c.textStyle?.text)
+        .filter(c => tracks[c.trackIndex]?.enabled !== false)
+        .map(c => {
+          const style = { ...DEFAULT_TEXT_STYLE, ...c.textStyle }
+          return {
+            text: style.text,
+            startTime: c.startTime,
+            endTime: c.startTime + c.duration,
+            style: {
+              fontSize: style.fontSize,
+              fontFamily: style.fontFamily,
+              fontWeight: style.fontWeight,
+              fontStyle: style.fontStyle,
+              color: style.color,
+              backgroundColor: style.backgroundColor,
+              textAlign: style.textAlign,
+              positionX: style.positionX,
+              positionY: style.positionY,
+              strokeColor: style.strokeColor,
+              strokeWidth: style.strokeWidth,
+              shadowColor: style.shadowColor,
+              shadowOffsetX: style.shadowOffsetX,
+              shadowOffsetY: style.shadowOffsetY,
+            },
+          }
+        })
+
+      setExportFrameInfo('正在启动 ffmpeg...')
 
       const result = await window.electronAPI?.exportNative({
         clips: exportClips,
@@ -295,6 +323,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
         quality: settings.quality,
         letterbox: exportLetterbox || undefined,
         subtitles: subtitleData.length > 0 ? subtitleData : undefined,
+        textOverlays: textOverlayData.length > 0 ? textOverlayData : undefined,
       })
 
       if (result?.error) {
@@ -327,7 +356,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-          <h2 className="text-lg font-bold text-white">Export</h2>
+          <h2 className="text-lg font-bold text-white">导出</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
@@ -343,7 +372,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
               <div className="flex items-center gap-3">
                 <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
                 <span className="text-sm text-zinc-300">
-                  {exportType === 'package' ? 'Generating FCPXML...' : 'Rendering video...'}
+                  {exportType === 'package' ? '正在生成 FCPXML...' : '正在渲染视频...'}
                 </span>
               </div>
               <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
@@ -353,7 +382,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                 />
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-zinc-500">{exportProgress}% complete</p>
+                <p className="text-xs text-zinc-500">已完成 {exportProgress}%</p>
                 {exportFrameInfo && <p className="text-xs text-zinc-500">{exportFrameInfo}</p>}
               </div>
               {exportType === 'video' && (
@@ -363,7 +392,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                   className="border-zinc-700 text-zinc-400"
                   onClick={handleCancel}
                 >
-                  Cancel
+                  取消
                 </Button>
               )}
             </div>
@@ -377,7 +406,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                   <Check className="h-5 w-5 text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-white font-medium">Export complete</p>
+                  <p className="text-sm text-white font-medium">导出完成</p>
                   <p className="text-xs text-zinc-500 truncate max-w-[340px]">{exportPath}</p>
                   {exportFrameInfo && <p className="text-xs text-zinc-500">{exportFrameInfo}</p>}
                 </div>
@@ -394,7 +423,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                   }}
                 >
                   <FolderOpen className="h-4 w-4 mr-2" />
-                  Show in Folder
+                  打开所在文件夹
                 </Button>
                 <Button
                   variant="outline"
@@ -405,7 +434,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                     setExportType(null)
                   }}
                 >
-                  Export Another
+                  再导出一个
                 </Button>
               </div>
             </div>
@@ -419,7 +448,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                   <AlertCircle className="h-5 w-5 text-red-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-white font-medium">Export failed</p>
+                  <p className="text-sm text-white font-medium">导出失败</p>
                   <p className="text-xs text-red-400 max-w-[340px] break-words">{exportError}</p>
                 </div>
               </div>
@@ -432,7 +461,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                   setExportType(null)
                 }}
               >
-                Try Again
+                重试
               </Button>
             </div>
           )}
@@ -449,8 +478,8 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                   <Package className="h-5 w-5 text-zinc-300" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold text-white">Package (FCPXML)</p>
-                  <p className="text-[10px] text-zinc-500">For Premiere Pro &amp; DaVinci Resolve</p>
+                  <p className="text-sm font-semibold text-white">工程包（FCPXML）</p>
+                  <p className="text-[10px] text-zinc-500">适用于 Premiere Pro 和 DaVinci Resolve</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <div className="w-6 h-6 rounded bg-zinc-700 flex items-center justify-center" title="DaVinci Resolve">
@@ -466,13 +495,13 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
               {/* Divider */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-zinc-800" />
-                <span className="text-[10px] text-zinc-600 uppercase tracking-wider font-semibold">Video Export</span>
+                <span className="text-[10px] text-zinc-600 uppercase tracking-wider font-semibold">视频导出</span>
                 <div className="flex-1 h-px bg-zinc-800" />
               </div>
 
               {/* Format selector */}
               <div>
-                <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-2 block">Format</label>
+                <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-2 block">格式</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(Object.keys(CODEC_INFO) as ExportCodec[]).map(codec => (
                     <button
@@ -494,7 +523,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
               {/* Resolution & Frame rate row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-1.5 block">Resolution</label>
+                  <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-1.5 block">分辨率</label>
                   <div className="relative">
                     <select
                       value={`${settings.width}x${settings.height}`}
@@ -514,7 +543,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-1.5 block">Frame Rate</label>
+                  <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-1.5 block">帧率</label>
                   <div className="relative">
                     <select
                       value={settings.fps}
@@ -532,7 +561,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
 
               {/* Quality */}
               <div>
-                <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-1.5 block">Quality</label>
+                <label className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-1.5 block">质量</label>
                 {settings.codec === 'h264' && (
                   <div className="flex items-center gap-3">
                     <input
@@ -546,7 +575,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                       // Note: lower CRF = higher quality (inverted display)
                     />
                     <span className="text-xs text-zinc-400 w-16 text-right">
-                      {settings.quality <= 18 ? 'High' : settings.quality <= 23 ? 'Medium' : 'Low'}
+                      {settings.quality <= 18 ? '高' : settings.quality <= 23 ? '中' : '低'}
                       <span className="text-zinc-600 ml-1">({settings.quality})</span>
                     </span>
                   </div>
@@ -591,7 +620,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-zinc-800" />
-                    <span className="text-[10px] text-zinc-600 uppercase tracking-wider font-semibold">Options</span>
+                    <span className="text-[10px] text-zinc-600 uppercase tracking-wider font-semibold">选项</span>
                     <div className="flex-1 h-px bg-zinc-800" />
                   </div>
                   <label className="flex items-center gap-2.5 cursor-pointer group">
@@ -601,7 +630,7 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                       onChange={(e) => setBurnSubtitles(e.target.checked)}
                       className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-blue-500 cursor-pointer"
                     />
-                    <span className="text-xs text-zinc-300 group-hover:text-white transition-colors">Burn-in subtitles</span>
+                    <span className="text-xs text-zinc-300 group-hover:text-white transition-colors">将字幕烧录到视频</span>
                   </label>
                 </div>
               )}
@@ -613,11 +642,11 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
                 className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
               >
                 <Film className="h-4 w-4" />
-                Export Video
+                导出视频
               </button>
 
               {clips.length === 0 && (
-                <p className="text-xs text-zinc-500 text-center">Add clips to the timeline to export.</p>
+                <p className="text-xs text-zinc-500 text-center">请先将片段添加到时间线后再导出。</p>
               )}
             </div>
           )}

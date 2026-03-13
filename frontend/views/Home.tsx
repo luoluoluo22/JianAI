@@ -7,9 +7,9 @@ import type { Project } from '../types/project'
 
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp)
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
+  return date.toLocaleDateString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
@@ -89,14 +89,14 @@ function ProjectCard({ project, onOpen, onDelete, onRename }: {
             className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
           >
             <Pencil className="h-4 w-4" />
-            Rename
+            重命名
           </button>
           <button
             onClick={() => { onDelete(); setShowMenu(false) }}
             className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-zinc-700 flex items-center gap-2"
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            删除
           </button>
         </div>
       )}
@@ -144,26 +144,26 @@ export function Home() {
         <nav className="flex-1 px-3">
           <button className="w-full px-3 py-2 rounded-lg bg-zinc-800 text-white text-left text-sm font-medium flex items-center gap-2">
             <Folder className="h-4 w-4" />
-            Home
+            首页
           </button>
           
           <div className="mt-6">
             <h4 className="px-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              Quick Actions
+              快捷入口
             </h4>
             <button 
               onClick={openPlayground}
               className="w-full px-3 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white text-left text-sm flex items-center gap-2 transition-colors"
             >
               <Sparkles className="h-4 w-4" />
-              Playground
+              创作空间
             </button>
           </div>
           
           {projects.length > 0 && (
             <div className="mt-6">
               <h4 className="px-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                Recent Projects
+                最近项目
               </h4>
               {projects.slice(0, 5).map(project => (
                 <button
@@ -185,7 +185,7 @@ export function Home() {
             className="w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            New Project
+            新建项目
           </button>
         </div>
       </aside>
@@ -206,27 +206,27 @@ export function Home() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
           <div className="absolute bottom-6 left-8 z-10">
             <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">剪艾 JianAI</h1>
-            <p className="text-zinc-200 drop-shadow-md">Create and manage your video projects</p>
+            <p className="text-zinc-200 drop-shadow-md">创建并管理你的剪辑项目</p>
           </div>
         </div>
         
         {/* Projects Grid */}
         <div className="p-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">Projects</h2>
+            <h2 className="text-xl font-semibold text-white">项目</h2>
           </div>
           
           {projects.length === 0 ? (
             <div className="text-center py-16">
               <Folder className="h-16 w-16 text-zinc-700 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-zinc-400 mb-2">No projects yet</h3>
-              <p className="text-zinc-500 mb-6">Create your first project to get started</p>
+              <h3 className="text-lg font-medium text-zinc-400 mb-2">还没有项目</h3>
+              <p className="text-zinc-500 mb-6">创建你的第一个项目，开始剪辑</p>
               <Button 
                 onClick={() => setIsCreating(true)}
                 className="bg-blue-600 hover:bg-blue-500"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Project
+                新建项目
               </Button>
             </div>
           ) : (
@@ -237,7 +237,7 @@ export function Home() {
                   project={project}
                   onOpen={() => openProject(project.id)}
                   onDelete={() => {
-                    if (confirm(`Delete "${project.name}"?`)) {
+                    if (confirm(`删除“${project.name}”？`)) {
                       deleteProject(project.id)
                     }
                   }}
@@ -253,12 +253,12 @@ export function Home() {
       {isCreating && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-md border border-zinc-800">
-            <h2 className="text-xl font-semibold text-white mb-4">Create New Project</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">新建项目</h2>
             <input
               type="text"
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
-              placeholder="Project name"
+              placeholder="项目名称"
               className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
@@ -269,14 +269,14 @@ export function Home() {
                 onClick={() => { setIsCreating(false); setNewProjectName('') }}
                 className="flex-1 border-zinc-700"
               >
-                Cancel
+                取消
               </Button>
               <Button
                 onClick={handleCreateProject}
                 disabled={!newProjectName.trim()}
                 className="flex-1 bg-blue-600 hover:bg-blue-500"
               >
-                Create
+                创建
               </Button>
             </div>
           </div>
@@ -287,12 +287,12 @@ export function Home() {
       {renamingId && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-md border border-zinc-800">
-            <h2 className="text-xl font-semibold text-white mb-4">Rename Project</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">重命名项目</h2>
             <input
               type="text"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              placeholder="Project name"
+              placeholder="项目名称"
               className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && submitRename()}
@@ -303,14 +303,14 @@ export function Home() {
                 onClick={() => { setRenamingId(null); setRenameValue('') }}
                 className="flex-1 border-zinc-700"
               >
-                Cancel
+                取消
               </Button>
               <Button
                 onClick={submitRename}
                 disabled={!renameValue.trim()}
                 className="flex-1 bg-blue-600 hover:bg-blue-500"
               >
-                Save
+                保存
               </Button>
             </div>
           </div>

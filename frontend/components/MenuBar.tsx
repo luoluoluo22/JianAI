@@ -197,7 +197,7 @@ export function MenuBar({ menus, rightContent }: MenuBarProps) {
                       <input
                         ref={searchInputRef}
                         type="text"
-                        placeholder="Search menus..."
+                        placeholder="搜索菜单..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={handleSearchKeyDown}
@@ -209,7 +209,7 @@ export function MenuBar({ menus, rightContent }: MenuBarProps) {
                     {searchQuery && (
                       <div className="mt-1 max-h-48 overflow-y-auto">
                         {searchResults.length === 0 ? (
-                          <div className="text-[12px] text-zinc-500 px-2 py-2 text-center">No results</div>
+                          <div className="text-[12px] text-zinc-500 px-2 py-2 text-center">没有找到结果</div>
                         ) : (
                           searchResults.map((result, i) => (
                             <button

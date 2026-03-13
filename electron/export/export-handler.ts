@@ -4,11 +4,11 @@ import fs from 'fs'
 import os from 'os'
 import { getAllowedRoots } from '../config'
 import { logger } from '../logger'
-import { validatePath } from '../path-validation'
+import { approvePath, validatePath } from '../path-validation'
 import { findFfmpegPath, runFfmpeg, urlToFilePath, stopExportProcess } from './ffmpeg-utils'
 import { flattenTimeline } from './timeline'
 import type { ExportClip } from './timeline'
-import type { ExportSubtitle } from './video-filter'
+import type { ExportSubtitle, ExportTextOverlay } from './video-filter'
 import { buildVideoFilterGraph } from './video-filter'
 import { mixAudioToPcm } from './audio-mix'
 
@@ -17,18 +17,22 @@ export function registerExportHandlers(): void {
     clips: ExportClip[]; outputPath: string; codec: string; width: number; height: number; fps: number; quality: number;
     letterbox?: { ratio: number; color: string; opacity: number };
     subtitles?: ExportSubtitle[];
+    textOverlays?: ExportTextOverlay[];
   }) => {
     const ffmpegPath = findFfmpegPath()
     if (!ffmpegPath) return { error: 'FFmpeg not found' }
 
-    const { clips, outputPath, codec, width, height, fps, quality, letterbox, subtitles } = data
+    const { clips, outputPath, codec, width, height, fps, quality, letterbox, subtitles, textOverlays } = data
 
     // Validate output path and all clip source paths
     try {
       validatePath(outputPath, getAllowedRoots())
       for (const clip of clips) {
         const fp = urlToFilePath(clip.url)
-        if (fp) validatePath(fp, getAllowedRoots())
+        if (!fp) continue
+        // Allow exactly the source files that participate in this export session.
+        approvePath(fp)
+        validatePath(fp, getAllowedRoots())
       }
     } catch (err) {
       return { error: String(err) }
@@ -57,7 +61,7 @@ export function registerExportHandlers(): void {
       // STEP 1: Export video-only (simple concat, no audio complexity)
       logger.info( `[Export] Step 1: Video-only export (${segments.length} segments)`)
       {
-        const { inputs, filterScript } = buildVideoFilterGraph(segments, { width, height, fps, letterbox, subtitles })
+        const { inputs, filterScript } = buildVideoFilterGraph(segments, { width, height, fps, letterbox, subtitles, textOverlays })
 
         const filterFile = path.join(tmpDir, `ltx-filter-v-${ts}.txt`)
         fs.writeFileSync(filterFile, filterScript, 'utf8')

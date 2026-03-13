@@ -15,16 +15,16 @@ export type ToolType = 'select' | 'trackForward' | 'blade' | 'slip' | 'slide' | 
 export type ToolDef = { id: ToolType; icon: any; label: string; actionId: ActionId }
 
 export const PRIMARY_TOOLS: ToolDef[] = [
-  { id: 'select', icon: MousePointer2, label: 'Selection Tool', actionId: 'tool.select' },
-  { id: 'trackForward', icon: ChevronRight, label: 'Track Select Forward (Shift: single track)', actionId: 'tool.trackForward' },
-  { id: 'blade', icon: Scissors, label: 'Blade Tool', actionId: 'tool.blade' },
+  { id: 'select', icon: MousePointer2, label: '选择工具', actionId: 'tool.select' },
+  { id: 'trackForward', icon: ChevronRight, label: '向前轨道选择（Shift：单轨）', actionId: 'tool.trackForward' },
+  { id: 'blade', icon: Scissors, label: '切刀工具', actionId: 'tool.blade' },
 ]
 
 export const TRIM_TOOLS: ToolDef[] = [
-  { id: 'ripple', icon: ArrowLeftRight, label: 'Ripple Trim', actionId: 'tool.ripple' },
-  { id: 'roll', icon: GitMerge, label: 'Roll Trim (A/B)', actionId: 'tool.roll' },
-  { id: 'slip', icon: MoveHorizontal, label: 'Slip Tool', actionId: 'tool.slip' },
-  { id: 'slide', icon: Gauge, label: 'Slide Tool', actionId: 'tool.slide' },
+  { id: 'ripple', icon: ArrowLeftRight, label: '波纹修剪', actionId: 'tool.ripple' },
+  { id: 'roll', icon: GitMerge, label: '滚动修剪（A/B）', actionId: 'tool.roll' },
+  { id: 'slip', icon: MoveHorizontal, label: '滑移工具', actionId: 'tool.slip' },
+  { id: 'slide', icon: Gauge, label: '滑动工具', actionId: 'tool.slide' },
 ]
 
 // ── Color Labels (Premiere-style) ────────────────────────────────────
@@ -39,16 +39,16 @@ export interface ColorLabelDef {
 }
 
 export const COLOR_LABELS: ColorLabelDef[] = [
-  { id: 'violet',    label: 'Violet',    color: '#8b5cf6', bg: 'bg-violet-700/50',  border: 'border-violet-500', dot: 'bg-violet-500' },
-  { id: 'blue',      label: 'Blue',      color: '#3b82f6', bg: 'bg-blue-700/50',      border: 'border-blue-500',   dot: 'bg-blue-500' },
-  { id: 'cyan',      label: 'Cyan',      color: '#06b6d4', bg: 'bg-cyan-700/50',      border: 'border-cyan-500',   dot: 'bg-cyan-500' },
-  { id: 'teal',      label: 'Teal',      color: '#14b8a6', bg: 'bg-teal-700/50',      border: 'border-teal-500',   dot: 'bg-teal-500' },
-  { id: 'green',     label: 'Green',     color: '#22c55e', bg: 'bg-green-700/50',     border: 'border-green-500',  dot: 'bg-green-500' },
-  { id: 'yellow',    label: 'Yellow',    color: '#eab308', bg: 'bg-yellow-700/50',    border: 'border-yellow-500', dot: 'bg-yellow-500' },
-  { id: 'orange',    label: 'Orange',    color: '#f97316', bg: 'bg-orange-700/50',    border: 'border-orange-500', dot: 'bg-orange-500' },
-  { id: 'red',       label: 'Red',       color: '#ef4444', bg: 'bg-red-700/50',       border: 'border-red-500',    dot: 'bg-red-500' },
-  { id: 'rose',      label: 'Rose',      color: '#f43f5e', bg: 'bg-rose-700/50',      border: 'border-rose-500',   dot: 'bg-rose-500' },
-  { id: 'pink',      label: 'Pink',      color: '#ec4899', bg: 'bg-pink-700/50',      border: 'border-pink-500',   dot: 'bg-pink-500' },
+  { id: 'violet',    label: '紫罗兰',    color: '#8b5cf6', bg: 'bg-violet-700/50',  border: 'border-violet-500', dot: 'bg-violet-500' },
+  { id: 'blue',      label: '蓝色',      color: '#3b82f6', bg: 'bg-blue-700/50',      border: 'border-blue-500',   dot: 'bg-blue-500' },
+  { id: 'cyan',      label: '青色',      color: '#06b6d4', bg: 'bg-cyan-700/50',      border: 'border-cyan-500',   dot: 'bg-cyan-500' },
+  { id: 'teal',      label: '蓝绿',      color: '#14b8a6', bg: 'bg-teal-700/50',      border: 'border-teal-500',   dot: 'bg-teal-500' },
+  { id: 'green',     label: '绿色',      color: '#22c55e', bg: 'bg-green-700/50',     border: 'border-green-500',  dot: 'bg-green-500' },
+  { id: 'yellow',    label: '黄色',      color: '#eab308', bg: 'bg-yellow-700/50',    border: 'border-yellow-500', dot: 'bg-yellow-500' },
+  { id: 'orange',    label: '橙色',      color: '#f97316', bg: 'bg-orange-700/50',    border: 'border-orange-500', dot: 'bg-orange-500' },
+  { id: 'red',       label: '红色',      color: '#ef4444', bg: 'bg-red-700/50',       border: 'border-red-500',    dot: 'bg-red-500' },
+  { id: 'rose',      label: '玫红',      color: '#f43f5e', bg: 'bg-rose-700/50',      border: 'border-rose-500',   dot: 'bg-rose-500' },
+  { id: 'pink',      label: '粉色',      color: '#ec4899', bg: 'bg-pink-700/50',      border: 'border-pink-500',   dot: 'bg-pink-500' },
 ]
 
 export function getColorLabel(id: string | undefined): ColorLabelDef | undefined {

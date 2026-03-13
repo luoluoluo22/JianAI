@@ -65,18 +65,18 @@ export function buildMenuDefinitions(p: MenuDepsParams): MenuDefinition[] {
     // Import/export, timeline management, project settings
     {
       id: 'file',
-      label: 'File',
+      label: '文件',
       items: [
-        { id: 'new-timeline', label: 'New Timeline', action: () => p.handleAddTimeline() },
-        { id: 'duplicate-timeline', label: 'Duplicate Active Timeline', action: () => { if (p.activeTimeline) p.handleDuplicateTimeline(p.activeTimeline.id) }, disabled: !p.activeTimeline },
+        { id: 'new-timeline', label: '新建时间线', action: () => p.handleAddTimeline() },
+        { id: 'duplicate-timeline', label: '复制当前时间线', action: () => { if (p.activeTimeline) p.handleDuplicateTimeline(p.activeTimeline.id) }, disabled: !p.activeTimeline },
         { id: 'sep-0', label: '', separator: true },
-        { id: 'import-media', label: 'Import Media...', shortcut: 'Ctrl+I', action: () => p.fileInputRef.current?.click() },
-        { id: 'import-timeline', label: 'Import Timeline (XML)...', action: () => p.setShowImportTimelineModal(true) },
-        { id: 'import-srt', label: 'Import Subtitles (SRT)...', action: () => p.subtitleFileInputRef.current?.click() },
+        { id: 'import-media', label: '导入素材...', shortcut: 'Ctrl+I', action: () => p.fileInputRef.current?.click() },
+        { id: 'import-timeline', label: '导入时间线（XML）...', action: () => p.setShowImportTimelineModal(true) },
+        { id: 'import-srt', label: '导入字幕（SRT）...', action: () => p.subtitleFileInputRef.current?.click() },
         { id: 'sep-1', label: '', separator: true },
-        { id: 'export-timeline', label: 'Export Timeline...', shortcut: 'Ctrl+E', action: () => p.setShowExportModal(true) },
-        { id: 'export-xml', label: 'Export FCP7 XML...', action: () => p.handleExportTimelineXml() },
-        { id: 'export-srt', label: 'Export Subtitles (SRT)...', action: () => p.handleExportSrt(), disabled: p.subtitles.length === 0 },
+        { id: 'export-timeline', label: '导出时间线...', shortcut: 'Ctrl+E', action: () => p.setShowExportModal(true) },
+        { id: 'export-xml', label: '导出 FCP7 XML...', action: () => p.handleExportTimelineXml() },
+        { id: 'export-srt', label: '导出字幕（SRT）...', action: () => p.handleExportSrt(), disabled: p.subtitles.length === 0 },
       ],
     },
 
@@ -84,23 +84,23 @@ export function buildMenuDefinitions(p: MenuDepsParams): MenuDefinition[] {
     // Undo/redo, clipboard, selection, source monitor edits
     {
       id: 'edit',
-      label: 'Edit',
+      label: '编辑',
       items: [
-        { id: 'undo', label: 'Undo', shortcut: getShortcutLabel(p.kbLayout, 'edit.undo'), action: () => p.undoRef.current!() },
-        { id: 'redo', label: 'Redo', shortcut: getShortcutLabel(p.kbLayout, 'edit.redo'), action: () => p.redoRef.current!() },
+        { id: 'undo', label: '撤销', shortcut: getShortcutLabel(p.kbLayout, 'edit.undo'), action: () => p.undoRef.current!() },
+        { id: 'redo', label: '重做', shortcut: getShortcutLabel(p.kbLayout, 'edit.redo'), action: () => p.redoRef.current!() },
         { id: 'sep-1', label: '', separator: true },
-        { id: 'cut', label: 'Cut', shortcut: getShortcutLabel(p.kbLayout, 'edit.cut'), action: () => p.cutRef.current!() },
-        { id: 'copy', label: 'Copy', shortcut: getShortcutLabel(p.kbLayout, 'edit.copy'), action: () => p.copyRef.current!() },
-        { id: 'paste', label: 'Paste', shortcut: getShortcutLabel(p.kbLayout, 'edit.paste'), action: () => p.pasteRef.current!() },
+        { id: 'cut', label: '剪切', shortcut: getShortcutLabel(p.kbLayout, 'edit.cut'), action: () => p.cutRef.current!() },
+        { id: 'copy', label: '复制', shortcut: getShortcutLabel(p.kbLayout, 'edit.copy'), action: () => p.copyRef.current!() },
+        { id: 'paste', label: '粘贴', shortcut: getShortcutLabel(p.kbLayout, 'edit.paste'), action: () => p.pasteRef.current!() },
         { id: 'sep-2', label: '', separator: true },
-        { id: 'select-all', label: 'Select All', shortcut: getShortcutLabel(p.kbLayout, 'edit.selectAll'), action: () => p.setSelectedClipIds(new Set(p.clips.map(c => c.id))) },
-        { id: 'deselect-all', label: 'Deselect All', shortcut: getShortcutLabel(p.kbLayout, 'edit.deselect'), action: () => p.setSelectedClipIds(new Set()) },
+        { id: 'select-all', label: '全选', shortcut: getShortcutLabel(p.kbLayout, 'edit.selectAll'), action: () => p.setSelectedClipIds(new Set(p.clips.map(c => c.id))) },
+        { id: 'deselect-all', label: '取消全选', shortcut: getShortcutLabel(p.kbLayout, 'edit.deselect'), action: () => p.setSelectedClipIds(new Set()) },
         { id: 'sep-3', label: '', separator: true },
-        { id: 'insert-edit', label: 'Insert Edit', shortcut: getShortcutLabel(p.kbLayout, 'edit.insertEdit'), action: () => p.handleInsertEdit(), disabled: !p.sourceAsset },
-        { id: 'overwrite-edit', label: 'Overwrite Edit', shortcut: getShortcutLabel(p.kbLayout, 'edit.overwriteEdit'), action: () => p.handleOverwriteEdit(), disabled: !p.sourceAsset },
-        { id: 'match-frame', label: 'Match Frame', shortcut: getShortcutLabel(p.kbLayout, 'edit.matchFrame'), action: () => p.matchFrameRef.current!() },
+        { id: 'insert-edit', label: '插入编辑', shortcut: getShortcutLabel(p.kbLayout, 'edit.insertEdit'), action: () => p.handleInsertEdit(), disabled: !p.sourceAsset },
+        { id: 'overwrite-edit', label: '覆盖编辑', shortcut: getShortcutLabel(p.kbLayout, 'edit.overwriteEdit'), action: () => p.handleOverwriteEdit(), disabled: !p.sourceAsset },
+        { id: 'match-frame', label: '匹配帧', shortcut: getShortcutLabel(p.kbLayout, 'edit.matchFrame'), action: () => p.matchFrameRef.current!() },
         { id: 'sep-4', label: '', separator: true },
-        { id: 'keyboard-shortcuts', label: 'Keyboard Shortcuts...', action: () => p.setKbEditorOpen(true) },
+        { id: 'keyboard-shortcuts', label: '快捷键...', action: () => p.setKbEditorOpen(true) },
       ],
     },
 
@@ -108,18 +108,18 @@ export function buildMenuDefinitions(p: MenuDepsParams): MenuDefinition[] {
     // Operations on selected clip(s): split, duplicate, delete, transform, audio, speed
     {
       id: 'clip',
-      label: 'Clip',
+      label: '片段',
       items: [
-        { id: 'split', label: 'Split at Playhead', shortcut: getShortcutLabel(p.kbLayout, 'tool.blade'), action: () => { if (p.selectedClip) p.splitClipAtPlayhead(p.selectedClip.id) }, disabled: !p.selectedClip },
-        { id: 'duplicate', label: 'Duplicate Clip', action: () => { if (p.selectedClip) p.duplicateClip(p.selectedClip.id) }, disabled: !p.selectedClip },
-        { id: 'delete', label: 'Delete', shortcut: getShortcutLabel(p.kbLayout, 'edit.delete'), action: () => { if (p.selectedClipIds.size > 0) { p.pushUndo(); p.setClips(prev => prev.filter(c => !p.selectedClipIds.has(c.id))); p.setSelectedClipIds(new Set()) } }, disabled: p.selectedClipIds.size === 0 },
+        { id: 'split', label: '在播放头处分割', shortcut: getShortcutLabel(p.kbLayout, 'tool.blade'), action: () => { if (p.selectedClip) p.splitClipAtPlayhead(p.selectedClip.id) }, disabled: !p.selectedClip },
+        { id: 'duplicate', label: '复制片段', action: () => { if (p.selectedClip) p.duplicateClip(p.selectedClip.id) }, disabled: !p.selectedClip },
+        { id: 'delete', label: '删除', shortcut: getShortcutLabel(p.kbLayout, 'edit.delete'), action: () => { if (p.selectedClipIds.size > 0) { p.pushUndo(); p.setClips(prev => prev.filter(c => !p.selectedClipIds.has(c.id))); p.setSelectedClipIds(new Set()) } }, disabled: p.selectedClipIds.size === 0 },
         { id: 'sep-1', label: '', separator: true },
-        { id: 'flip-h', label: 'Flip Horizontal', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { flipH: !p.selectedClip.flipH }) }, disabled: !p.selectedClip },
-        { id: 'flip-v', label: 'Flip Vertical', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { flipV: !p.selectedClip.flipV }) }, disabled: !p.selectedClip },
-        { id: 'reverse', label: 'Reverse', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { reversed: !p.selectedClip.reversed }) }, disabled: !p.selectedClip },
+        { id: 'flip-h', label: '水平翻转', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { flipH: !p.selectedClip.flipH }) }, disabled: !p.selectedClip },
+        { id: 'flip-v', label: '垂直翻转', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { flipV: !p.selectedClip.flipV }) }, disabled: !p.selectedClip },
+        { id: 'reverse', label: '倒放', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { reversed: !p.selectedClip.reversed }) }, disabled: !p.selectedClip },
         { id: 'sep-2', label: '', separator: true },
-        { id: 'mute', label: p.selectedClip?.muted ? 'Unmute Clip' : 'Mute Clip', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { muted: !p.selectedClip.muted }) }, disabled: !p.selectedClip },
-        { id: 'link-audio', label: p.selectedClip?.linkedClipIds?.length ? 'Unlink Audio' : 'Link Audio', action: () => {
+        { id: 'mute', label: p.selectedClip?.muted ? '取消静音片段' : '静音片段', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { muted: !p.selectedClip.muted }) }, disabled: !p.selectedClip },
+        { id: 'link-audio', label: p.selectedClip?.linkedClipIds?.length ? '取消音频链接' : '链接音频', action: () => {
           if (!p.selectedClip) return
           p.pushUndo()
           if (p.selectedClip.linkedClipIds?.length) {
@@ -132,12 +132,12 @@ export function buildMenuDefinitions(p: MenuDepsParams): MenuDefinition[] {
           }
         }, disabled: !p.selectedClip },
         { id: 'sep-3', label: '', separator: true },
-        { id: 'speed-025', label: 'Speed: 0.25x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 0.25 }) }, disabled: !p.selectedClip },
-        { id: 'speed-050', label: 'Speed: 0.5x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 0.5 }) }, disabled: !p.selectedClip },
-        { id: 'speed-100', label: 'Speed: 1x (Normal)', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 1 }) }, disabled: !p.selectedClip },
-        { id: 'speed-150', label: 'Speed: 1.5x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 1.5 }) }, disabled: !p.selectedClip },
-        { id: 'speed-200', label: 'Speed: 2x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 2 }) }, disabled: !p.selectedClip },
-        { id: 'speed-400', label: 'Speed: 4x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 4 }) }, disabled: !p.selectedClip },
+        { id: 'speed-025', label: '速度：0.25x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 0.25 }) }, disabled: !p.selectedClip },
+        { id: 'speed-050', label: '速度：0.5x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 0.5 }) }, disabled: !p.selectedClip },
+        { id: 'speed-100', label: '速度：1x（正常）', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 1 }) }, disabled: !p.selectedClip },
+        { id: 'speed-150', label: '速度：1.5x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 1.5 }) }, disabled: !p.selectedClip },
+        { id: 'speed-200', label: '速度：2x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 2 }) }, disabled: !p.selectedClip },
+        { id: 'speed-400', label: '速度：4x', action: () => { if (p.selectedClip) p.updateClip(p.selectedClip.id, { speed: 4 }) }, disabled: !p.selectedClip },
       ],
     },
 
@@ -145,19 +145,19 @@ export function buildMenuDefinitions(p: MenuDepsParams): MenuDefinition[] {
     // Timeline-level: add tracks, add layers, add text/captions, snapping
     {
       id: 'sequence',
-      label: 'Sequence',
+      label: '序列',
       items: [
-        { id: 'add-video-track', label: 'Add Video Track', action: () => { p.pushUndo(); p.setTracks(prev => { const vTracks = prev.filter((t: any) => t.kind === 'video'); const name = `V${vTracks.length + 1}`; return [...prev, { id: `track-${Date.now()}`, name, muted: false, locked: false, kind: 'video' as const }] }) } },
-        { id: 'add-audio-track', label: 'Add Audio Track', action: () => { p.pushUndo(); p.setTracks(prev => { const aTracks = prev.filter((t: any) => t.kind === 'audio'); const name = `A${aTracks.length + 1}`; return [...prev, { id: `track-${Date.now()}`, name, muted: false, locked: false, kind: 'audio' as const }] }) } },
-        { id: 'add-subtitle-track', label: 'Add Subtitle Track', action: () => p.addSubtitleTrack() },
+        { id: 'add-video-track', label: '添加视频轨', action: () => { p.pushUndo(); p.setTracks(prev => { const vTracks = prev.filter((t: any) => t.kind === 'video'); const name = `V${vTracks.length + 1}`; return [...prev, { id: `track-${Date.now()}`, name, muted: false, locked: false, kind: 'video' as const }] }) } },
+        { id: 'add-audio-track', label: '添加音频轨', action: () => { p.pushUndo(); p.setTracks(prev => { const aTracks = prev.filter((t: any) => t.kind === 'audio'); const name = `A${aTracks.length + 1}`; return [...prev, { id: `track-${Date.now()}`, name, muted: false, locked: false, kind: 'audio' as const }] }) } },
+        { id: 'add-subtitle-track', label: '添加字幕轨', action: () => p.addSubtitleTrack() },
         { id: 'sep-1', label: '', separator: true },
-        { id: 'add-adjustment', label: 'Add Adjustment Layer', action: () => p.createAdjustmentLayerAsset() },
+        { id: 'add-adjustment', label: '添加调整层', action: () => p.createAdjustmentLayerAsset() },
         { id: 'sep-2', label: '', separator: true },
-        { id: 'add-text', label: 'Add Text Overlay', action: () => p.addTextClip() },
-        { id: 'add-text-lower', label: 'Add Lower Third', action: () => p.addTextClip(TEXT_PRESETS.find((pr: any) => pr.id === 'lower-third-basic')?.style) },
-        { id: 'add-text-subtitle', label: 'Add Caption', action: () => p.addTextClip(TEXT_PRESETS.find((pr: any) => pr.id === 'subtitle-style')?.style) },
+        { id: 'add-text', label: '添加文字覆盖', action: () => p.addTextClip() },
+        { id: 'add-text-lower', label: '添加下三分之一标题', action: () => p.addTextClip(TEXT_PRESETS.find((pr: any) => pr.id === 'lower-third-basic')?.style) },
+        { id: 'add-text-subtitle', label: '添加字幕样式文字', action: () => p.addTextClip(TEXT_PRESETS.find((pr: any) => pr.id === 'subtitle-style')?.style) },
         { id: 'sep-3', label: '', separator: true },
-        { id: 'snap-toggle', label: p.snapEnabled ? 'Disable Snapping' : 'Enable Snapping', shortcut: getShortcutLabel(p.kbLayout, 'timeline.toggleSnap'), action: () => p.setSnapEnabled(!p.snapEnabled) },
+        { id: 'snap-toggle', label: p.snapEnabled ? '关闭吸附' : '开启吸附', shortcut: getShortcutLabel(p.kbLayout, 'timeline.toggleSnap'), action: () => p.setSnapEnabled(!p.snapEnabled) },
       ],
     },
 
@@ -165,19 +165,19 @@ export function buildMenuDefinitions(p: MenuDepsParams): MenuDefinition[] {
     // Timeline editing tools (selection, trim, blade, etc.)
     {
       id: 'tools',
-      label: 'Tools',
+      label: '工具',
       items: [
-        { id: 'tool-select', label: 'Selection Tool', shortcut: getShortcutLabel(p.kbLayout, 'tool.select'), action: () => p.setActiveTool('select') },
-        { id: 'tool-blade', label: 'Blade Tool', shortcut: getShortcutLabel(p.kbLayout, 'tool.blade'), action: () => p.setActiveTool('blade') },
+        { id: 'tool-select', label: '选择工具', shortcut: getShortcutLabel(p.kbLayout, 'tool.select'), action: () => p.setActiveTool('select') },
+        { id: 'tool-blade', label: '刀片工具', shortcut: getShortcutLabel(p.kbLayout, 'tool.blade'), action: () => p.setActiveTool('blade') },
         { id: 'sep-1', label: '', separator: true },
-        { id: 'tool-ripple', label: 'Ripple Trim', shortcut: getShortcutLabel(p.kbLayout, 'tool.ripple'), action: () => { p.setActiveTool('ripple'); p.setLastTrimTool('ripple') } },
-        { id: 'tool-roll', label: 'Roll Trim', shortcut: getShortcutLabel(p.kbLayout, 'tool.roll'), action: () => { p.setActiveTool('roll'); p.setLastTrimTool('roll') } },
-        { id: 'tool-slip', label: 'Slip Tool', shortcut: getShortcutLabel(p.kbLayout, 'tool.slip'), action: () => { p.setActiveTool('slip'); p.setLastTrimTool('slip') } },
-        { id: 'tool-slide', label: 'Slide Tool', shortcut: getShortcutLabel(p.kbLayout, 'tool.slide'), action: () => { p.setActiveTool('slide'); p.setLastTrimTool('slide') } },
+        { id: 'tool-ripple', label: '波纹修剪', shortcut: getShortcutLabel(p.kbLayout, 'tool.ripple'), action: () => { p.setActiveTool('ripple'); p.setLastTrimTool('ripple') } },
+        { id: 'tool-roll', label: '滚动修剪', shortcut: getShortcutLabel(p.kbLayout, 'tool.roll'), action: () => { p.setActiveTool('roll'); p.setLastTrimTool('roll') } },
+        { id: 'tool-slip', label: '滑移工具', shortcut: getShortcutLabel(p.kbLayout, 'tool.slip'), action: () => { p.setActiveTool('slip'); p.setLastTrimTool('slip') } },
+        { id: 'tool-slide', label: '滑动工具', shortcut: getShortcutLabel(p.kbLayout, 'tool.slide'), action: () => { p.setActiveTool('slide'); p.setLastTrimTool('slide') } },
         { id: 'sep-2', label: '', separator: true },
         ...(p.canUseIcLora ? [{
           id: 'ic-lora',
-          label: 'IC-LoRA Style Transfer...',
+          label: 'IC-LoRA 风格迁移...',
           action: () => {
             if (p.selectedClip?.type === 'video') {
               p.onICLoraClip(p.selectedClip)
@@ -192,28 +192,28 @@ export function buildMenuDefinitions(p: MenuDepsParams): MenuDefinition[] {
     // Panel visibility, timeline zoom, layout
     {
       id: 'view',
-      label: 'View',
+      label: '视图',
       items: [
-        { id: 'clip-viewer', label: p.showSourceMonitor ? 'Hide Clip Viewer' : 'Show Clip Viewer', action: () => p.setShowSourceMonitor(!p.showSourceMonitor) },
+        { id: 'clip-viewer', label: p.showSourceMonitor ? '隐藏素材监看器' : '显示素材监看器', action: () => p.setShowSourceMonitor(!p.showSourceMonitor) },
         // EFFECTS HIDDEN - effects-browser menu item hidden because effects are not applied during export
         // { id: 'effects-browser', label: p.showEffectsBrowser ? 'Hide Effects Browser' : 'Show Effects Browser', action: () => p.setShowEffectsBrowser(!p.showEffectsBrowser) },
-        { id: 'properties-panel', label: p.showPropertiesPanel ? 'Hide Properties Panel' : 'Show Properties Panel', action: () => p.setShowPropertiesPanel(!p.showPropertiesPanel) },
+        { id: 'properties-panel', label: p.showPropertiesPanel ? '隐藏属性面板' : '显示属性面板', action: () => p.setShowPropertiesPanel(!p.showPropertiesPanel) },
         { id: 'sep-1', label: '', separator: true },
-        { id: 'fit-to-view', label: 'Zoom to Fit', shortcut: getShortcutLabel(p.kbLayout, 'timeline.fitToView'), action: () => p.fitToViewRef.current!() },
-        { id: 'zoom-in', label: 'Zoom In', shortcut: getShortcutLabel(p.kbLayout, 'timeline.zoomIn'), action: () => p.setZoom(z => Math.min(z * 1.25, 10)) },
-        { id: 'zoom-out', label: 'Zoom Out', shortcut: getShortcutLabel(p.kbLayout, 'timeline.zoomOut'), action: () => p.setZoom(z => Math.max(z / 1.25, 0.1)) },
+        { id: 'fit-to-view', label: '适配视图', shortcut: getShortcutLabel(p.kbLayout, 'timeline.fitToView'), action: () => p.fitToViewRef.current!() },
+        { id: 'zoom-in', label: '放大', shortcut: getShortcutLabel(p.kbLayout, 'timeline.zoomIn'), action: () => p.setZoom(z => Math.min(z * 1.25, 10)) },
+        { id: 'zoom-out', label: '缩小', shortcut: getShortcutLabel(p.kbLayout, 'timeline.zoomOut'), action: () => p.setZoom(z => Math.max(z / 1.25, 0.1)) },
         { id: 'sep-2', label: '', separator: true },
-        { id: 'reset-layout', label: 'Reset Layout', action: () => p.handleResetLayout() },
+        { id: 'reset-layout', label: '重置布局', action: () => p.handleResetLayout() },
       ],
     },
 
     // ── Help ──
     {
       id: 'help',
-      label: 'Help',
+      label: '帮助',
       items: [
-        { id: 'shortcuts', label: 'Keyboard Shortcuts...', action: () => p.setKbEditorOpen(true) },
-        { id: 'about', label: 'About JianAI', action: () => window.dispatchEvent(new CustomEvent('open-settings', { detail: { tab: 'about' } })) },
+        { id: 'shortcuts', label: '快捷键...', action: () => p.setKbEditorOpen(true) },
+        { id: 'about', label: '关于剪艾 JianAI', action: () => window.dispatchEvent(new CustomEvent('open-settings', { detail: { tab: 'about' } })) },
       ],
     },
   ]

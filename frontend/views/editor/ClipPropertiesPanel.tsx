@@ -89,7 +89,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
           }`}
           onClick={() => setPropertiesTab('properties')}
         >
-          Properties
+          属性
         </button>
         <button
           className={`px-3 py-1.5 text-xs font-semibold transition-colors border-b-2 ${
@@ -99,7 +99,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
           }`}
           onClick={() => setPropertiesTab('metadata')}
         >
-          Metadata
+          元数据
         </button>
       </div>
 
@@ -131,17 +131,17 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
           <div className="space-y-3">
             {/* Currently Displayed */}
             <div className="space-y-2">
-              <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Currently Displayed</h4>
+              <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">当前显示</h4>
               <div className="bg-zinc-800/60 rounded-lg p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Take</span>
+                  <span className="text-xs text-zinc-400">版本</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-white font-medium">{displayTakeNum} / {totalTakes}</span>
                     {totalTakes > 1 && (
-                      <Tooltip content="Delete this take" side="left">
+                      <Tooltip content="删除这个版本" side="left">
                         <button
                           onClick={() => {
-                            if (confirm(`Delete take ${displayTakeNum}?`)) {
+                            if (confirm(`确定删除第 ${displayTakeNum} 个版本吗？`)) {
                               handleDeleteTake(selectedClip.id)
                             }
                           }}
@@ -156,32 +156,32 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 {resInfo ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Resolution</span>
+                      <span className="text-xs text-zinc-400">分辨率</span>
                       <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: resInfo.color }} />
                         <span className="text-xs font-semibold" style={{ color: resInfo.color }}>{resInfo.label}</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Quality</span>
+                      <span className="text-xs text-zinc-400">质量</span>
                       <span className="text-xs text-white">
-                        {resInfo.height >= 2160 ? 'Ultra HD' : resInfo.height >= 1080 ? 'Full HD' : resInfo.height >= 720 ? 'HD' : 'SD'}
-                        {isUpscaled && <span className="ml-1.5 text-green-400">(Upscaled)</span>}
+                        {resInfo.height >= 2160 ? '超高清' : resInfo.height >= 1080 ? '全高清' : resInfo.height >= 720 ? '高清' : '标清'}
+                        {isUpscaled && <span className="ml-1.5 text-green-400">（已超分）</span>}
                       </span>
                     </div>
                     {dims && dims.width > 0 && (
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-zinc-400">Dimensions</span>
+                        <span className="text-xs text-zinc-400">尺寸</span>
                         <span className="text-xs text-white font-mono">{dims.width} × {dims.height}</span>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="text-xs text-zinc-500 italic">Detecting resolution...</div>
+                  <div className="text-xs text-zinc-500 italic">正在识别分辨率...</div>
                 )}
                 {originalRes && originalRes !== 'imported' && (
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Original Gen</span>
+                    <span className="text-xs text-zinc-400">原始生成</span>
                     <span className="text-xs text-zinc-500">{originalRes}</span>
                   </div>
                 )}
@@ -190,53 +190,61 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
             {/* Clip Info */}
             <div className="space-y-2">
-              <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Clip Info</h4>
+              <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">片段信息</h4>
               <div className="bg-zinc-800/60 rounded-lg p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Type</span>
+                  <span className="text-xs text-zinc-400">类型</span>
                   <div className="flex items-center gap-1">
                     {selectedClip.type === 'video' && <FileVideo className="h-3 w-3 text-zinc-400" />}
                     {selectedClip.type === 'image' && <FileImage className="h-3 w-3 text-zinc-400" />}
                     {selectedClip.type === 'audio' && <FileAudio className="h-3 w-3 text-zinc-400" />}
-                    <span className="text-xs text-white capitalize">{selectedClip.type}</span>
+                    <span className="text-xs text-white">
+                      {{
+                        video: '视频',
+                        image: '图片',
+                        audio: '音频',
+                        text: '文字',
+                        adjustment: '调整层',
+                      }[selectedClip.type] || selectedClip.type}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Duration</span>
+                  <span className="text-xs text-zinc-400">时长</span>
                   <span className="text-xs text-white">{selectedClip.duration.toFixed(2)}s</span>
                 </div>
                 {liveAsset?.duration && (
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Source Duration</span>
+                    <span className="text-xs text-zinc-400">源素材时长</span>
                     <span className="text-xs text-white">{liveAsset.duration.toFixed(2)}s</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Speed</span>
+                  <span className="text-xs text-zinc-400">速度</span>
                   <span className="text-xs text-white">{selectedClip.speed}x</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Track</span>
-                  <span className="text-xs text-white">{tracks[selectedClip.trackIndex]?.name || `Track ${selectedClip.trackIndex + 1}`}</span>
+                  <span className="text-xs text-zinc-400">轨道</span>
+                  <span className="text-xs text-white">{tracks[selectedClip.trackIndex]?.name || `轨道 ${selectedClip.trackIndex + 1}`}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Start</span>
+                  <span className="text-xs text-zinc-400">开始</span>
                   <span className="text-xs text-white">{formatTime(selectedClip.startTime)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">End</span>
+                  <span className="text-xs text-zinc-400">结束</span>
                   <span className="text-xs text-white">{formatTime(selectedClip.startTime + selectedClip.duration)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Trim In</span>
+                  <span className="text-xs text-zinc-400">起始裁切</span>
                   <span className="text-xs text-white">{selectedClip.trimStart.toFixed(2)}s</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Trim Out</span>
+                  <span className="text-xs text-zinc-400">结束裁切</span>
                   <span className="text-xs text-white">{selectedClip.trimEnd.toFixed(2)}s</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Opacity</span>
+                  <span className="text-xs text-zinc-400">透明度</span>
                   <span className="text-xs text-white">{selectedClip.opacity}%</span>
                 </div>
               </div>
@@ -245,14 +253,14 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
             {/* Takes */}
             {liveAsset?.takes && liveAsset.takes.length > 1 && (
               <div className="space-y-2">
-                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Takes</h4>
+                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">版本信息</h4>
                 <div className="bg-zinc-800/60 rounded-lg p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Total Takes</span>
+                    <span className="text-xs text-zinc-400">总版本数</span>
                     <span className="text-xs text-white">{liveAsset.takes.length}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Active Take</span>
+                    <span className="text-xs text-zinc-400">当前版本</span>
                     <span className="text-xs text-white">
                       #{(selectedClip.takeIndex ?? (liveAsset.activeTakeIndex ?? liveAsset.takes.length - 1)) + 1}
                     </span>
@@ -264,37 +272,37 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
             {/* Generation Parameters */}
             {genParams && (
               <div className="space-y-2">
-                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Generation</h4>
+                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">生成信息</h4>
                 <div className="bg-zinc-800/60 rounded-lg p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Mode</span>
+                    <span className="text-xs text-zinc-400">模式</span>
                     <span className="text-xs text-white">{genParams.mode.replace(/-/g, ' ')}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Model</span>
+                    <span className="text-xs text-zinc-400">模型</span>
                     <span className="text-xs text-white">{genParams.model}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Gen Resolution</span>
+                    <span className="text-xs text-zinc-400">生成分辨率</span>
                     <span className="text-xs text-white">{genParams.resolution}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">FPS</span>
+                    <span className="text-xs text-zinc-400">帧率</span>
                     <span className="text-xs text-white">{genParams.fps}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Duration</span>
+                    <span className="text-xs text-zinc-400">时长</span>
                     <span className="text-xs text-white">{genParams.duration}s</span>
                   </div>
                   {genParams.cameraMotion && genParams.cameraMotion !== 'none' && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Camera</span>
+                      <span className="text-xs text-zinc-400">运镜</span>
                       <span className="text-xs text-white">{genParams.cameraMotion}</span>
                     </div>
                   )}
                   {genParams.prompt && (
                     <div className="mt-2">
-                      <span className="text-xs text-zinc-400 block mb-1">Prompt</span>
+                      <span className="text-xs text-zinc-400 block mb-1">提示词</span>
                       <p className="text-xs text-zinc-300 bg-zinc-900/50 rounded p-2 break-words leading-relaxed">{genParams.prompt}</p>
                     </div>
                   )}
@@ -305,7 +313,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
             {/* File Path */}
             {filePath && (
               <div className="space-y-2">
-                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">File</h4>
+                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">文件</h4>
                 <div className="bg-zinc-800/60 rounded-lg p-3">
                   <p className="text-[10px] text-zinc-400 break-all font-mono leading-relaxed">{filePath}</p>
                 </div>
@@ -315,7 +323,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
             {/* Asset Created At */}
             {liveAsset?.createdAt && (
               <div className="space-y-2">
-                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Created</h4>
+                <h4 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">创建时间</h4>
                 <div className="bg-zinc-800/60 rounded-lg p-3">
                   <span className="text-xs text-zinc-300">{new Date(liveAsset.createdAt).toLocaleString()}</span>
                 </div>
@@ -337,12 +345,12 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
             <div className="bg-blue-950/30 border border-blue-700/30 rounded-lg p-3 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <Layers className="h-4 w-4 text-blue-400" />
-                <h4 className="text-xs font-semibold text-blue-300">Adjustment Layer</h4>
+                <h4 className="text-xs font-semibold text-blue-300">调整层</h4>
               </div>
 
               {/* Letterbox toggle */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Letterbox</span>
+                <span className="text-[10px] text-zinc-400">黑边遮幅</span>
                 <button
                   onClick={() => updateLetterbox({ enabled: !lb.enabled })}
                   className={`px-2.5 py-0.5 rounded text-[10px] border transition-colors ${
@@ -351,7 +359,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                       : 'bg-zinc-800 text-zinc-500 border-zinc-700'
                   }`}
                 >
-                  {lb.enabled ? 'On' : 'Off'}
+                  {lb.enabled ? '开启' : '关闭'}
                 </button>
               </div>
 
@@ -359,7 +367,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <>
                   {/* Aspect ratio */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-zinc-400">Aspect Ratio</span>
+                    <span className="text-[10px] text-zinc-400">宽高比</span>
                     <select
                       value={lb.aspectRatio}
                       onChange={e => updateLetterbox({ aspectRatio: e.target.value as LetterboxSettings['aspectRatio'] })}
@@ -370,14 +378,14 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                       <option value="2.76:1">2.76:1 (Ultra Panavision)</option>
                       <option value="1.85:1">1.85:1 (Flat Widescreen)</option>
                       <option value="4:3">4:3 (Classic TV)</option>
-                      <option value="custom">Custom</option>
+                      <option value="custom">自定义</option>
                     </select>
                   </div>
 
                   {/* Custom ratio input */}
                   {lb.aspectRatio === 'custom' && (
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-zinc-400">Custom Ratio</span>
+                      <span className="text-[10px] text-zinc-400">自定义比例</span>
                       <input
                         type="number"
                         step={0.01}
@@ -419,7 +427,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Color correction note */}
               <p className="text-[9px] text-zinc-600 pt-1 border-t border-zinc-800">
-                Color correction on this layer affects all tracks below.
+                此调整层上的调色会影响下方所有轨道。
               </p>
             </div>
           )
@@ -435,24 +443,24 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
             <div className="bg-cyan-950/30 border border-cyan-700/30 rounded-lg p-3 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <Type className="h-4 w-4 text-cyan-400" />
-                <h4 className="text-xs font-semibold text-cyan-300">Text Overlay</h4>
+                <h4 className="text-xs font-semibold text-cyan-300">文字覆盖</h4>
               </div>
 
               {/* Text content */}
               <div className="space-y-1">
-                <span className="text-[10px] text-zinc-400">Content</span>
+                <span className="text-[10px] text-zinc-400">内容</span>
                 <textarea
                   value={ts.text}
                   onChange={e => updateText({ text: e.target.value })}
                   rows={3}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-white resize-none focus:outline-none focus:border-cyan-500/50"
-                  placeholder="Enter text..."
+                  placeholder="输入文字..."
                 />
               </div>
 
               {/* Font family */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Font</span>
+                <span className="text-[10px] text-zinc-400">字体</span>
                 <select
                   value={ts.fontFamily.split(',')[0].trim()}
                   onChange={e => updateText({ fontFamily: `${e.target.value}, sans-serif` })}
@@ -472,7 +480,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Font size */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Size</span>
+                <span className="text-[10px] text-zinc-400">字号</span>
                 <div className="flex items-center gap-2">
                   <input type="range" min={12} max={200} value={ts.fontSize} onChange={e => updateText({ fontSize: parseInt(e.target.value) })} className="w-20 accent-cyan-500" />
                   <span className="text-[10px] text-zinc-300 w-8 text-right tabular-nums">{ts.fontSize}</span>
@@ -481,20 +489,20 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Font weight & style */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Weight</span>
+                <span className="text-[10px] text-zinc-400">字重</span>
                 <select
                   value={ts.fontWeight}
                   onChange={e => updateText({ fontWeight: e.target.value as TextOverlayStyle['fontWeight'] })}
                   className="bg-zinc-800 border border-zinc-700 rounded px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-cyan-500/50"
                 >
-                  <option value="100">Thin</option>
-                  <option value="300">Light</option>
-                  <option value="normal">Normal</option>
-                  <option value="500">Medium</option>
-                  <option value="600">Semibold</option>
-                  <option value="bold">Bold</option>
-                  <option value="800">Extra Bold</option>
-                  <option value="900">Black</option>
+                  <option value="100">极细</option>
+                  <option value="300">细体</option>
+                  <option value="normal">常规</option>
+                  <option value="500">中等</option>
+                  <option value="600">半粗</option>
+                  <option value="bold">加粗</option>
+                  <option value="800">特粗</option>
+                  <option value="900">黑体</option>
                 </select>
               </div>
 
@@ -503,33 +511,33 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                   onClick={() => updateText({ fontStyle: ts.fontStyle === 'italic' ? 'normal' : 'italic' })}
                   className={`px-2 py-1 rounded text-[10px] border ${ts.fontStyle === 'italic' ? 'bg-cyan-600/30 text-cyan-300 border-cyan-500/40' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}
                 >
-                  <em>Italic</em>
+                  <em>斜体</em>
                 </button>
               </div>
 
               {/* Text color */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Color</span>
+                <span className="text-[10px] text-zinc-400">文字颜色</span>
                 <input type="color" value={ts.color} onChange={e => updateText({ color: e.target.value })} className="w-7 h-6 rounded cursor-pointer border border-zinc-700" />
               </div>
 
               {/* Background color */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Background</span>
+                <span className="text-[10px] text-zinc-400">背景</span>
                 <div className="flex items-center gap-1.5">
                   <input type="color" value={ts.backgroundColor === 'transparent' ? '#000000' : ts.backgroundColor.slice(0, 7)} onChange={e => updateText({ backgroundColor: e.target.value + 'cc' })} className="w-7 h-6 rounded cursor-pointer border border-zinc-700" />
                   <button
                     onClick={() => updateText({ backgroundColor: ts.backgroundColor === 'transparent' ? 'rgba(0,0,0,0.7)' : 'transparent' })}
                     className={`px-1.5 py-0.5 rounded text-[9px] border ${ts.backgroundColor !== 'transparent' ? 'bg-cyan-600/20 text-cyan-300 border-cyan-500/30' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}
                   >
-                    {ts.backgroundColor !== 'transparent' ? 'On' : 'Off'}
+                    {ts.backgroundColor !== 'transparent' ? '开' : '关'}
                   </button>
                 </div>
               </div>
 
               {/* Text alignment */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Align</span>
+                <span className="text-[10px] text-zinc-400">对齐</span>
                 <div className="flex gap-0.5">
                   {(['left', 'center', 'right'] as const).map(align => (
                     <button
@@ -545,7 +553,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Position */}
               <div className="space-y-1.5">
-                <span className="text-[10px] text-zinc-400">Position</span>
+                <span className="text-[10px] text-zinc-400">位置</span>
                 <div className="flex gap-2">
                   <div className="flex-1">
                     <span className="text-[9px] text-zinc-500">X</span>
@@ -560,7 +568,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Opacity */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Opacity</span>
+                <span className="text-[10px] text-zinc-400">透明度</span>
                 <div className="flex items-center gap-2">
                   <input type="range" min={0} max={100} value={ts.opacity} onChange={e => updateText({ opacity: parseInt(e.target.value) })} className="w-20 accent-cyan-500" />
                   <span className="text-[10px] text-zinc-300 w-8 text-right tabular-nums">{ts.opacity}%</span>
@@ -569,7 +577,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Stroke */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Outline</span>
+                <span className="text-[10px] text-zinc-400">描边</span>
                 <div className="flex items-center gap-1.5">
                   <input type="range" min={0} max={10} step={0.5} value={ts.strokeWidth} onChange={e => updateText({ strokeWidth: parseFloat(e.target.value) })} className="w-16 accent-cyan-500" />
                   <input type="color" value={ts.strokeColor === 'transparent' ? '#000000' : ts.strokeColor} onChange={e => updateText({ strokeColor: e.target.value, strokeWidth: Math.max(ts.strokeWidth, 1) })} className="w-5 h-5 rounded cursor-pointer border border-zinc-700" />
@@ -578,7 +586,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Shadow */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Shadow</span>
+                <span className="text-[10px] text-zinc-400">阴影</span>
                 <div className="flex items-center gap-2">
                   <input type="range" min={0} max={20} value={ts.shadowBlur} onChange={e => updateText({ shadowBlur: parseInt(e.target.value) })} className="w-16 accent-cyan-500" />
                   <span className="text-[10px] text-zinc-300 w-4 text-right tabular-nums">{ts.shadowBlur}</span>
@@ -587,7 +595,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
 
               {/* Presets */}
               <div className="pt-2 border-t border-zinc-800">
-                <span className="text-[10px] text-zinc-400 block mb-1.5">Apply Preset</span>
+                <span className="text-[10px] text-zinc-400 block mb-1.5">应用预设</span>
                 <div className="grid grid-cols-2 gap-1">
                   {TEXT_PRESETS.map(preset => (
                     <button
@@ -616,11 +624,11 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
             className="w-full px-3 py-2 rounded-lg bg-blue-600/15 border border-blue-500/30 text-blue-400 text-xs hover:bg-blue-600/25 hover:border-blue-500/50 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Film className="h-3.5 w-3.5" />
-            {isRegenerating && i2vClipId === selectedClip.id ? 'Generating Video...' : 'Generate Video (I2V)'}
+            {isRegenerating && i2vClipId === selectedClip.id ? '正在生成视频...' : '生成视频（I2V）'}
           </button>
         )}
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Start Time</label>
+          <label className="block text-xs text-zinc-500 mb-1">开始时间</label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -630,12 +638,12 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
               step={0.1}
               className="flex-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white text-sm"
             />
-            <span className="text-xs text-zinc-500">sec</span>
+            <span className="text-xs text-zinc-500">秒</span>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Duration</label>
+          <label className="block text-xs text-zinc-500 mb-1">时长</label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -651,15 +659,15 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
               step={0.1}
               className="flex-1 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white text-sm"
             />
-            <span className="text-xs text-zinc-500">sec</span>
+            <span className="text-xs text-zinc-500">秒</span>
             {selectedClip.type === 'video' && selectedClip.asset?.duration && (
-              <span className="text-[10px] text-zinc-600">max {getMaxClipDuration(selectedClip).toFixed(1)}s</span>
+              <span className="text-[10px] text-zinc-600">最大 {getMaxClipDuration(selectedClip).toFixed(1)} 秒</span>
             )}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Speed</label>
+          <label className="block text-xs text-zinc-500 mb-1">速度</label>
           <input
             type="range"
             min={0.25}
@@ -685,7 +693,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Volume</label>
+          <label className="block text-xs text-zinc-500 mb-1">音量</label>
           <input
             type="range"
             min={0}
@@ -710,7 +718,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
               onChange={(e) => updateClip(selectedClip.id, { reversed: e.target.checked })}
               className="rounded bg-zinc-800 border-zinc-600"
             />
-            <span className="text-sm text-zinc-300">Reverse playback</span>
+            <span className="text-sm text-zinc-300">倒放</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -719,14 +727,14 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
               onChange={(e) => updateClip(selectedClip.id, { muted: e.target.checked })}
               className="rounded bg-zinc-800 border-zinc-600"
             />
-            <span className="text-sm text-zinc-300">Mute audio</span>
+            <span className="text-sm text-zinc-300">静音</span>
           </label>
         </div>
 
         {/* --- Opacity --- */}
         <div className="pt-3 border-t border-zinc-800">
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-zinc-400">Opacity</label>
+            <label className="text-xs font-semibold text-zinc-400">透明度</label>
             <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.opacity ?? 100}%</span>
           </div>
           <input
@@ -752,7 +760,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
           >
             {showFlip ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             <FlipHorizontal2 className="h-3.5 w-3.5" />
-            Flip
+            翻转
           </button>
           {showFlip && (
             <div className="space-y-2 pl-5">
@@ -764,7 +772,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                   className="rounded bg-zinc-800 border-zinc-600"
                 />
                 <FlipHorizontal2 className="h-3.5 w-3.5 text-zinc-400" />
-                <span className="text-sm text-zinc-300">Horizontal</span>
+                <span className="text-sm text-zinc-300">水平</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -774,7 +782,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                   className="rounded bg-zinc-800 border-zinc-600"
                 />
                 <FlipVertical2 className="h-3.5 w-3.5 text-zinc-400" />
-                <span className="text-sm text-zinc-300">Vertical</span>
+                <span className="text-sm text-zinc-300">垂直</span>
               </label>
             </div>
           )}
@@ -788,13 +796,13 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
           >
             {showTransitions ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             <Film className="h-3.5 w-3.5" />
-            Transitions
+            转场
           </button>
           {showTransitions && (
             <div className="space-y-3 pl-5">
               {/* Transition In */}
               <div>
-                <label className="block text-[10px] text-zinc-500 mb-1 uppercase tracking-wider">Transition In</label>
+                <label className="block text-[10px] text-zinc-500 mb-1 uppercase tracking-wider">入场转场</label>
                 <select
                   value={selectedClip.transitionIn?.type || 'none'}
                   onChange={(e) => updateClip(selectedClip.id, {
@@ -802,18 +810,18 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                   })}
                   className="w-full px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white text-xs"
                 >
-                  <option value="none">None</option>
-                  <option value="dissolve">Dissolve</option>
-                  <option value="fade-to-black">Fade from Black</option>
-                  <option value="fade-to-white">Fade from White</option>
-                  <option value="wipe-left">Wipe Left</option>
-                  <option value="wipe-right">Wipe Right</option>
-                  <option value="wipe-up">Wipe Up</option>
-                  <option value="wipe-down">Wipe Down</option>
+                  <option value="none">无</option>
+                  <option value="dissolve">叠化</option>
+                  <option value="fade-to-black">从黑场淡入</option>
+                  <option value="fade-to-white">从白场淡入</option>
+                  <option value="wipe-left">向左擦除</option>
+                  <option value="wipe-right">向右擦除</option>
+                  <option value="wipe-up">向上擦除</option>
+                  <option value="wipe-down">向下擦除</option>
                 </select>
                 {selectedClip.transitionIn?.type !== 'none' && (
                   <div className="mt-1.5">
-                    <label className="block text-[10px] text-zinc-600 mb-0.5">Duration</label>
+                    <label className="block text-[10px] text-zinc-600 mb-0.5">时长</label>
                     <div className="flex items-center gap-2">
                       <input
                         type="range"
@@ -833,7 +841,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
               </div>
               {/* Transition Out */}
               <div>
-                <label className="block text-[10px] text-zinc-500 mb-1 uppercase tracking-wider">Transition Out</label>
+                <label className="block text-[10px] text-zinc-500 mb-1 uppercase tracking-wider">出场转场</label>
                 <select
                   value={selectedClip.transitionOut?.type || 'none'}
                   onChange={(e) => updateClip(selectedClip.id, {
@@ -841,18 +849,18 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                   })}
                   className="w-full px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-white text-xs"
                 >
-                  <option value="none">None</option>
-                  <option value="dissolve">Dissolve</option>
-                  <option value="fade-to-black">Fade to Black</option>
-                  <option value="fade-to-white">Fade to White</option>
-                  <option value="wipe-left">Wipe Left</option>
-                  <option value="wipe-right">Wipe Right</option>
-                  <option value="wipe-up">Wipe Up</option>
-                  <option value="wipe-down">Wipe Down</option>
+                  <option value="none">无</option>
+                  <option value="dissolve">叠化</option>
+                  <option value="fade-to-black">淡出到黑场</option>
+                  <option value="fade-to-white">淡出到白场</option>
+                  <option value="wipe-left">向左擦除</option>
+                  <option value="wipe-right">向右擦除</option>
+                  <option value="wipe-up">向上擦除</option>
+                  <option value="wipe-down">向下擦除</option>
                 </select>
                 {selectedClip.transitionOut?.type !== 'none' && (
                   <div className="mt-1.5">
-                    <label className="block text-[10px] text-zinc-600 mb-0.5">Duration</label>
+                    <label className="block text-[10px] text-zinc-600 mb-0.5">时长</label>
                     <div className="flex items-center gap-2">
                       <input
                         type="range"
@@ -884,7 +892,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
           >
             {showColorCorrection ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             <Palette className="h-3.5 w-3.5" />
-            Color Correction
+            调色
             {selectedClip.colorCorrection && Object.values(selectedClip.colorCorrection).some(v => v !== 0) && (
               <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
             )}
@@ -896,14 +904,14 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 onClick={() => updateClip(selectedClip.id, { colorCorrection: { ...DEFAULT_COLOR_CORRECTION } })}
               >
                 <RotateCcw className="h-3 w-3" />
-                Reset All
+                全部重置
               </button>
 
               <div>
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <Eye className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Exposure</span>
+                    <span className="text-[11px] text-zinc-400">曝光</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.exposure || 0}</span>
                 </div>
@@ -924,7 +932,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <Sun className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Brightness</span>
+                    <span className="text-[11px] text-zinc-400">亮度</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.brightness || 0}</span>
                 </div>
@@ -945,7 +953,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <Contrast className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Contrast</span>
+                    <span className="text-[11px] text-zinc-400">对比度</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.contrast || 0}</span>
                 </div>
@@ -966,7 +974,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <Droplets className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Saturation</span>
+                    <span className="text-[11px] text-zinc-400">饱和度</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.saturation || 0}</span>
                 </div>
@@ -987,7 +995,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <Thermometer className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Temperature</span>
+                    <span className="text-[11px] text-zinc-400">色温</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.temperature || 0}</span>
                 </div>
@@ -1003,8 +1011,8 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                   className="w-full h-1.5 accent-blue-500"
                 />
                 <div className="flex justify-between text-[9px] text-zinc-600 mt-0.5">
-                  <span>Cool</span>
-                  <span>Warm</span>
+                  <span>冷</span>
+                  <span>暖</span>
                 </div>
               </div>
 
@@ -1012,7 +1020,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <Palette className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Tint</span>
+                    <span className="text-[11px] text-zinc-400">色调</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.tint || 0}</span>
                 </div>
@@ -1028,8 +1036,8 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                   className="w-full h-1.5 accent-blue-500"
                 />
                 <div className="flex justify-between text-[9px] text-zinc-600 mt-0.5">
-                  <span>Green</span>
-                  <span>Magenta</span>
+                  <span>偏绿</span>
+                  <span>偏洋红</span>
                 </div>
               </div>
 
@@ -1037,7 +1045,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <SunDim className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Highlights</span>
+                    <span className="text-[11px] text-zinc-400">高光</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.highlights || 0}</span>
                 </div>
@@ -1058,7 +1066,7 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
                     <Moon className="h-3 w-3 text-zinc-500" />
-                    <span className="text-[11px] text-zinc-400">Shadows</span>
+                    <span className="text-[11px] text-zinc-400">阴影</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 tabular-nums">{selectedClip.colorCorrection?.shadows || 0}</span>
                 </div>

@@ -60,7 +60,7 @@ export function ToolsPanel({
           <div className="relative flex-shrink-0">
             <Tooltip
               side="right"
-              content={(() => { const s = getShortcutLabel(kbLayout, currentTrimTool.actionId); return <>{currentTrimTool.label}<span className="text-zinc-400">{s ? ` (${s}) — ` : ' — '}right-click or hold for more</span></>; })()}
+              content={(() => { const s = getShortcutLabel(kbLayout, currentTrimTool.actionId); return <>{currentTrimTool.label}<span className="text-zinc-400">{s ? ` (${s})，` : '，'}右键或长按查看更多</span></>; })()}
             >
               <button
                 onClick={() => {
@@ -138,7 +138,7 @@ export function ToolsPanel({
 
       <div className="w-6 h-px bg-zinc-700 my-1 flex-shrink-0" />
 
-      <Tooltip side="right" content={snapEnabled ? 'Snapping On' : 'Snapping Off'}>
+      <Tooltip side="right" content={snapEnabled ? '吸附已开启' : '吸附已关闭'}>
         <button
           onClick={() => setSnapEnabled(!snapEnabled)}
           className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
@@ -170,7 +170,7 @@ export function ToolsPanel({
 
       <div className="w-6 h-px bg-zinc-700 my-1 flex-shrink-0" />
 
-      <Tooltip side="right" content="Add Text Overlay">
+      <Tooltip side="right" content="添加文字覆盖">
         <button
           onClick={() => addTextClip()}
           className="p-1.5 rounded-lg transition-colors flex-shrink-0 text-cyan-400 hover:bg-cyan-900/30 hover:text-cyan-300"

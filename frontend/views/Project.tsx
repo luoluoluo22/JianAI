@@ -13,16 +13,16 @@ export function Project() {
     return (
       <div className="h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-zinc-400 mb-4">Project not found</p>
-          <Button onClick={goHome}>Go Home</Button>
+          <p className="text-zinc-400 mb-4">未找到项目</p>
+          <Button onClick={goHome}>返回首页</Button>
         </div>
       </div>
     )
   }
   
   const tabs: { id: ProjectTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'gen-space', label: 'Gen Space', icon: <Sparkles className="h-4 w-4" /> },
-    { id: 'video-editor', label: 'Video Editor', icon: <Film className="h-4 w-4" /> },
+    { id: 'gen-space', label: '创作空间', icon: <Sparkles className="h-4 w-4" /> },
+    { id: 'video-editor', label: '视频编辑', icon: <Film className="h-4 w-4" /> },
   ]
   
   return (

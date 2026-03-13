@@ -63,7 +63,7 @@ export function AssetContextMenu({
     >
       {isMulti && (
         <div className="px-3 py-1 text-[10px] text-blue-400 font-medium">
-          {targetIds.length} assets selected
+          已选中 {targetIds.length} 个素材
         </div>
       )}
 
@@ -76,7 +76,7 @@ export function AssetContextMenu({
           className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
         >
           <Plus className="h-3.5 w-3.5 text-zinc-500" />
-          <span>Add to Timeline</span>
+          <span>添加到时间线</span>
         </button>
       )}
 
@@ -89,7 +89,7 @@ export function AssetContextMenu({
           className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
         >
           <FolderOpen className="h-3.5 w-3.5 text-zinc-500" />
-          <span>Show in Explorer</span>
+          <span>在资源管理器中显示</span>
         </button>
       )}
 
@@ -105,7 +105,7 @@ export function AssetContextMenu({
               className="w-full text-left px-3 py-1.5 text-red-400 hover:bg-zinc-700 flex items-center gap-3"
             >
               <X className="h-3.5 w-3.5" />
-              <span>Cancel Regeneration</span>
+              <span>取消重新生成</span>
             </button>
           ) : (
             <button
@@ -117,7 +117,7 @@ export function AssetContextMenu({
               className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3 disabled:opacity-50"
             >
               <RefreshCw className="h-3.5 w-3.5 text-zinc-500" />
-              <span>Regenerate</span>
+              <span>重新生成</span>
             </button>
           )}
         </>
@@ -127,7 +127,7 @@ export function AssetContextMenu({
       {!isMulti && asset.takes && asset.takes.length > 1 && (
         <>
           <div className="px-3 py-1.5 flex items-center gap-2">
-            <span className="text-[10px] text-zinc-500">Take:</span>
+            <span className="text-[10px] text-zinc-500">版本：</span>
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -169,7 +169,7 @@ export function AssetContextMenu({
             className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
           >
             <Layers className="h-3.5 w-3.5 text-zinc-500" />
-            <span>View All Takes</span>
+            <span>查看全部版本</span>
           </button>
           <button
             onClick={() => {
@@ -202,12 +202,12 @@ export function AssetContextMenu({
             className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
           >
             <GitMerge className="h-3.5 w-3.5 text-zinc-500 rotate-180" />
-            <span>Ungroup Takes</span>
+            <span>取消版本分组</span>
           </button>
           <button
             onClick={() => {
               const activeIdx = asset.activeTakeIndex ?? 0
-              if (confirm(`Delete take ${activeIdx + 1}?`)) {
+              if (confirm(`确定删除第 ${activeIdx + 1} 个版本吗？`)) {
                 if (currentProjectId && asset.takes) {
                   pushAssetUndoRef.current?.()
                   setClips(prev => prev.map(c => {
@@ -228,7 +228,7 @@ export function AssetContextMenu({
             className="w-full text-left px-3 py-1.5 text-red-400 hover:bg-red-900/30 flex items-center gap-3"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete Active Take</span>
+            <span>删除当前版本</span>
           </button>
         </>
       )}
@@ -236,7 +236,7 @@ export function AssetContextMenu({
       <div className="h-px bg-zinc-700 my-1" />
 
       {/* Color label picker */}
-      <div className="px-3 py-1 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Label</div>
+      <div className="px-3 py-1 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">颜色标签</div>
       <div className="px-3 py-1.5 flex items-center gap-1 flex-wrap">
         {/* Clear color button */}
         <button
@@ -253,7 +253,7 @@ export function AssetContextMenu({
           className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
             !asset.colorLabel ? 'border-white scale-110' : 'border-zinc-600 hover:border-zinc-400'
           }`}
-          title="No label"
+          title="无标签"
         >
           <X className="h-2 w-2 text-zinc-400" />
         </button>
@@ -281,7 +281,7 @@ export function AssetContextMenu({
 
       <div className="h-px bg-zinc-700 my-1" />
 
-      <div className="px-3 py-1 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Move to Bin</div>
+      <div className="px-3 py-1 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">移动到分组</div>
 
       <button
         onClick={() => {
@@ -295,7 +295,7 @@ export function AssetContextMenu({
         className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
       >
         <X className="h-3.5 w-3.5 text-zinc-500" />
-        <span>Remove from Bin</span>
+        <span>移出分组</span>
       </button>
 
       {bins.map(bin => (
@@ -318,7 +318,7 @@ export function AssetContextMenu({
 
       <button
         onClick={() => {
-          const name = prompt('New bin name:')
+          const name = prompt('新分组名称：')
           if (name?.trim() && currentProjectId) {
             pushAssetUndoRef.current?.()
             targetIds.forEach(id => updateAsset(currentProjectId, id, { bin: name.trim() }))
@@ -329,7 +329,7 @@ export function AssetContextMenu({
         className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
       >
         <FolderPlus className="h-3.5 w-3.5 text-zinc-500" />
-        <span>New Bin...</span>
+        <span>新建分组...</span>
       </button>
 
       {isMulti && (
@@ -353,7 +353,7 @@ export function AssetContextMenu({
             className="w-full text-left px-3 py-1.5 text-blue-300 hover:bg-zinc-700 flex items-center gap-3"
           >
             <GitMerge className="h-3.5 w-3.5" />
-            <span>Group as Takes</span>
+            <span>合并为多版本素材</span>
           </button>
           <button
             onClick={() => {
@@ -363,7 +363,7 @@ export function AssetContextMenu({
             className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
           >
             <X className="h-3.5 w-3.5 text-zinc-500" />
-            <span>Clear Selection</span>
+            <span>清除选择</span>
           </button>
         </>
       )}
@@ -382,7 +382,7 @@ export function AssetContextMenu({
         className="w-full text-left px-3 py-1.5 text-red-400 hover:bg-zinc-700 flex items-center gap-3"
       >
         <Trash2 className="h-3.5 w-3.5" />
-        <span>{isMulti ? `Delete ${targetIds.length} Assets` : 'Delete Asset'}</span>
+        <span>{isMulti ? `删除 ${targetIds.length} 个素材` : '删除素材'}</span>
       </button>
     </div>
   )

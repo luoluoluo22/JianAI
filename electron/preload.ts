@@ -81,6 +81,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     outputPath: string; codec: string; width: number; height: number; fps: number; quality: number;
     letterbox?: { ratio: number; color: string; opacity: number };
     subtitles?: { text: string; startTime: number; endTime: number; style: { fontSize: number; fontFamily: string; fontWeight: string; color: string; backgroundColor: string; position: string; italic: boolean } }[];
+    textOverlays?: { text: string; startTime: number; endTime: number; style: { fontSize: number; fontFamily: string; fontWeight: string; fontStyle?: string; color: string; backgroundColor: string; textAlign?: 'left' | 'center' | 'right'; positionX: number; positionY: number; strokeColor?: string; strokeWidth?: number; shadowColor?: string; shadowOffsetX?: number; shadowOffsetY?: number } }[];
   }): Promise<{ success?: boolean; error?: string }> =>
     ipcRenderer.invoke('export-native', data),
   exportCancel: (sessionId: string): Promise<{ ok?: boolean }> =>

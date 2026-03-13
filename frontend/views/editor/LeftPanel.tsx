@@ -189,9 +189,9 @@ export function LeftPanel(props: LeftPanelProps) {
         <div className="p-4 pb-2 space-y-2 flex-shrink-0">
           {!takesViewAssetId ? (<>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">Assets</h3>
+            <h3 className="text-sm font-semibold text-white">素材</h3>
             <div className="flex items-center gap-1">
-              <Tooltip content="Create bin" side="right">
+              <Tooltip content="新建素材分组" side="right">
                 <button
                   onClick={() => setCreatingBin(true)}
                   className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
@@ -199,7 +199,7 @@ export function LeftPanel(props: LeftPanelProps) {
                   <FolderPlus className="h-4 w-4" />
                 </button>
               </Tooltip>
-              <Tooltip content="Import media" side="right">
+              <Tooltip content="导入素材" side="right">
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
@@ -223,12 +223,12 @@ export function LeftPanel(props: LeftPanelProps) {
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  {{ all: '全部', video: '视频', image: '图片', audio: '音频' }[filter]}
                 </button>
               ))}
             </div>
             <div className="flex bg-zinc-900 rounded-lg p-0.5">
-              <Tooltip content="Grid view" side="right">
+              <Tooltip content="网格视图" side="right">
                 <button
                   onClick={() => setAssetViewMode('grid')}
                   className={`p-1 rounded transition-colors ${assetViewMode === 'grid' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -236,7 +236,7 @@ export function LeftPanel(props: LeftPanelProps) {
                   <LayoutGrid className="h-3 w-3" />
                 </button>
               </Tooltip>
-              <Tooltip content="List view" side="right">
+              <Tooltip content="列表视图" side="right">
                 <button
                   onClick={() => setAssetViewMode('list')}
                   className={`p-1 rounded transition-colors ${assetViewMode === 'list' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -258,7 +258,7 @@ export function LeftPanel(props: LeftPanelProps) {
                     : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300 border border-transparent'
                 }`}
               >
-                All
+                全部
               </button>
               {bins.map(bin => (
                 <button
@@ -340,7 +340,7 @@ export function LeftPanel(props: LeftPanelProps) {
                       setCreatingBin(false)
                       setNewBinName('')
                     }}
-                    placeholder="Bin name..."
+                    placeholder="分组名称..."
                     className="w-20 px-1.5 py-0.5 rounded text-[10px] bg-zinc-800 border border-zinc-600 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -358,7 +358,7 @@ export function LeftPanel(props: LeftPanelProps) {
           />
           </>) : (
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Takes</h3>
+              <h3 className="text-sm font-semibold text-white">版本</h3>
             </div>
           )}
         </div>
@@ -375,7 +375,7 @@ export function LeftPanel(props: LeftPanelProps) {
             <div className="flex-1 overflow-auto p-3 pt-0">
               {/* Header with back button */}
               <div className="flex items-center gap-2 mb-3">
-                <Tooltip content="Back to assets" side="right">
+                <Tooltip content="返回素材区" side="right">
                   <button
                     onClick={() => setTakesViewAssetId(null)}
                     className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
@@ -385,10 +385,10 @@ export function LeftPanel(props: LeftPanelProps) {
                 </Tooltip>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-white truncate">
-                    {takesAsset.prompt?.slice(0, 40) || 'Asset'}{(takesAsset.prompt?.length ?? 0) > 40 ? '...' : ''}
+                    {takesAsset.prompt?.slice(0, 40) || '素材'}{(takesAsset.prompt?.length ?? 0) > 40 ? '...' : ''}
                   </p>
                   <p className="text-[10px] text-zinc-500">
-                    {takesAsset.takes.length} takes
+                    {takesAsset.takes.length} 个版本
                   </p>
                 </div>
                 {/* Regenerate to create another take / Cancel */}
@@ -399,7 +399,7 @@ export function LeftPanel(props: LeftPanelProps) {
                       className="px-2 py-1 rounded-lg bg-red-900/20 text-red-400 hover:bg-red-900/40 transition-colors text-[10px] font-medium flex items-center gap-1 border border-red-500/30"
                     >
                       <X className="h-3 w-3" />
-                      Cancel
+                      取消
                     </button>
                   ) : (
                     <button
@@ -408,7 +408,7 @@ export function LeftPanel(props: LeftPanelProps) {
                       className="px-2 py-1 rounded-lg bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 transition-colors text-[10px] font-medium flex items-center gap-1 disabled:opacity-50"
                     >
                       <RefreshCw className="h-3 w-3" />
-                      New Take
+                      新建版本
                     </button>
                   )
                 )}
@@ -466,14 +466,14 @@ export function LeftPanel(props: LeftPanelProps) {
                             ? 'bg-blue-500 text-white'
                             : 'bg-black/70 text-zinc-300'
                         }`}>
-                          Take {idx + 1}
+                          版本 {idx + 1}
                         </span>
                       </div>
                       
                       {/* Active badge */}
                       {isActive && (
                         <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-500 text-white text-[9px] font-semibold">
-                          Active
+                          当前
                         </div>
                       )}
                       
@@ -484,12 +484,12 @@ export function LeftPanel(props: LeftPanelProps) {
                       
                       {/* Delete take button (visible on hover, only if more than 1 take) */}
                       {takesAsset.takes!.length > 1 && (
-                        <Tooltip content="Delete take" side="right">
+                        <Tooltip content="删除版本" side="right">
                           <button
                             className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/70 text-zinc-400 hover:text-red-400 hover:bg-red-900/60 opacity-0 group-hover:opacity-100 transition-all z-10"
                             onClick={(e) => {
                               e.stopPropagation()
-                              if (confirm(`Delete take ${idx + 1}?`)) {
+                              if (confirm(`删除版本 ${idx + 1}？`)) {
                                 if (currentProjectId) {
                                   pushAssetUndoRef.current()
                                   // Update any clips referencing this asset
@@ -609,13 +609,13 @@ export function LeftPanel(props: LeftPanelProps) {
           {/* Selection count indicator (minimal) */}
           {filteredAssets.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-zinc-500">No assets yet</p>
-              <p className="text-xs text-zinc-600 mt-1">Generate in Gen Space or import</p>
+              <p className="text-sm text-zinc-500">还没有素材</p>
+              <p className="text-xs text-zinc-600 mt-1">可在创作区生成，或直接导入本地素材</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="mt-3 px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 text-xs hover:bg-zinc-700 transition-colors"
               >
-                Import Media
+                导入素材
               </button>
             </div>
           ) : assetViewMode === 'grid' ? (
@@ -708,13 +708,13 @@ export function LeftPanel(props: LeftPanelProps) {
                         ))}
                       </div>
                       <p className="text-[9px] text-emerald-300/70 truncate max-w-[90%] px-1">
-                        {asset.path || 'Audio'}
+                        {asset.path || '音频'}
                       </p>
                     </div>
                   ) : asset.type === 'adjustment' ? (
                     <div className="w-full aspect-video bg-gradient-to-br from-blue-900/40 to-zinc-900 flex flex-col items-center justify-center gap-1.5 border border-dashed border-blue-500/30">
                       <Layers className="h-6 w-6 text-blue-400" />
-                      <p className="text-[9px] text-blue-300/70 font-medium">Adjustment Layer</p>
+                      <p className="text-[9px] text-blue-300/70 font-medium">调整层</p>
                     </div>
                   ) : (
                     <img src={asset.url} alt="" className="w-full aspect-video object-cover" />
@@ -727,7 +727,7 @@ export function LeftPanel(props: LeftPanelProps) {
                   )}
                   <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all z-10">
                     {asset.generationParams && (
-                      <Tooltip content="Regenerate" side="right">
+                      <Tooltip content="重新生成" side="right">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -744,7 +744,7 @@ export function LeftPanel(props: LeftPanelProps) {
                         </button>
                       </Tooltip>
                     )}
-                    <Tooltip content="Delete asset" side="right">
+                    <Tooltip content="删除素材" side="right">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -765,13 +765,13 @@ export function LeftPanel(props: LeftPanelProps) {
                         onClick={(e) => { e.stopPropagation(); handleCancelRegeneration() }}
                         className="px-2 py-0.5 rounded bg-zinc-800/80 border border-zinc-600/60 text-[9px] text-zinc-300 hover:text-red-400 hover:border-red-500/50 hover:bg-red-900/30 transition-colors"
                       >
-                        Cancel
+                        取消
                       </button>
                     </div>
                   )}
                   {asset.takes && asset.takes.length > 1 && (
                     <div className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/80 z-10">
-                      <Tooltip content="Previous take" side="right">
+                      <Tooltip content="上一个版本" side="right">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -794,14 +794,14 @@ export function LeftPanel(props: LeftPanelProps) {
                           setSelectedAssetIds(new Set())
                         }}
                         className="px-0.5 cursor-pointer hover:text-white transition-colors flex items-center gap-1"
-                        title="View all takes"
+                        title="查看全部版本"
                       >
                         <Layers className="h-2.5 w-2.5 text-blue-400" />
                         <span className="text-[9px] text-blue-300 font-medium">
                           {(asset.activeTakeIndex ?? 0) + 1}/{asset.takes.length}
                         </span>
                       </button>
-                      <Tooltip content="Next take" side="right">
+                      <Tooltip content="下一个版本" side="right">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -827,7 +827,7 @@ export function LeftPanel(props: LeftPanelProps) {
                   )}
                   <div className="absolute bottom-1 left-1 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/70 text-[10px] text-white">
                     {asset.type === 'video' ? <Video className="h-3 w-3" /> : asset.type === 'audio' ? <Music className="h-3 w-3" /> : asset.type === 'adjustment' ? <Layers className="h-3 w-3" /> : <Image className="h-3 w-3" />}
-                    {asset.type === 'adjustment' ? 'Adj' : asset.duration ? `${asset.duration.toFixed(1)}s` : ''}
+                    {asset.type === 'adjustment' ? '调整' : asset.duration ? `${asset.duration.toFixed(1)}s` : ''}
                   </div>
                 </div>
               )})}
@@ -840,12 +840,12 @@ export function LeftPanel(props: LeftPanelProps) {
                 <div className="w-2 flex-shrink-0" />
                 <div className="w-8 flex-shrink-0" />
                 {([
-                  { col: 'name' as const, label: 'Name', flex: 'flex-1 min-w-0' },
-                  { col: 'type' as const, label: 'Type', flex: 'w-14 flex-shrink-0 text-center' },
-                  { col: 'duration' as const, label: 'Duration', flex: 'w-16 flex-shrink-0 text-right' },
-                  { col: 'resolution' as const, label: 'Res', flex: 'w-14 flex-shrink-0 text-right' },
-                  { col: 'date' as const, label: 'Date', flex: 'w-16 flex-shrink-0 text-right' },
-                  { col: 'color' as const, label: 'Color', flex: 'w-10 flex-shrink-0 text-center' },
+                  { col: 'name' as const, label: '名称', flex: 'flex-1 min-w-0' },
+                  { col: 'type' as const, label: '类型', flex: 'w-14 flex-shrink-0 text-center' },
+                  { col: 'duration' as const, label: '时长', flex: 'w-16 flex-shrink-0 text-right' },
+                  { col: 'resolution' as const, label: '分辨率', flex: 'w-14 flex-shrink-0 text-right' },
+                  { col: 'date' as const, label: '日期', flex: 'w-16 flex-shrink-0 text-right' },
+                  { col: 'color' as const, label: '颜色', flex: 'w-10 flex-shrink-0 text-center' },
                 ]).map(({ col, label, flex }) => (
                   <button
                     key={col}
@@ -1010,7 +1010,7 @@ export function LeftPanel(props: LeftPanelProps) {
       {/* Timelines Section */}
       <div className="flex flex-col min-h-0" style={assetsHeight > 0 ? { flex: '1 1 0%' } : { flex: '0 1 40%', minHeight: 100 }}>
         <div className="p-3 pb-2 flex items-center justify-between flex-shrink-0">
-          <h3 className="text-sm font-semibold text-white">Timelines</h3>
+          <h3 className="text-sm font-semibold text-white">时间线</h3>
           <div className="relative">
             <Tooltip content="Add timeline" side="right">
               <button
@@ -1102,7 +1102,7 @@ export function LeftPanel(props: LeftPanelProps) {
                   </div>
                 </div>
                 {isActive ? (
-                  <span className="text-[9px] text-blue-400 font-medium uppercase tracking-wider flex-shrink-0">Active</span>
+                  <span className="text-[9px] text-blue-400 font-medium uppercase tracking-wider flex-shrink-0">当前</span>
                 ) : openTimelineIds.has(tl.id) ? (
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 flex-shrink-0" title="Open in tabs" />
                 ) : null}

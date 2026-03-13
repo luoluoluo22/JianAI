@@ -1,8 +1,121 @@
+import fs from 'fs'
+import path from 'path'
 import type { FlatSegment } from './timeline'
 
 export interface ExportSubtitle {
   text: string; startTime: number; endTime: number;
   style: { fontSize: number; fontFamily: string; fontWeight: string; color: string; backgroundColor: string; position: string; italic: boolean };
+}
+
+export interface ExportTextOverlay {
+  text: string
+  startTime: number
+  endTime: number
+  style: {
+    fontSize: number
+    fontFamily: string
+    fontWeight: string
+    fontStyle?: string
+    color: string
+    backgroundColor: string
+    textAlign?: 'left' | 'center' | 'right'
+    positionX: number
+    positionY: number
+    strokeColor?: string
+    strokeWidth?: number
+    shadowColor?: string
+    shadowOffsetX?: number
+    shadowOffsetY?: number
+  }
+}
+
+function escapeDrawtextText(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\\\\\')
+    .replace(/'/g, "'\\\\\\''")
+    .replace(/:/g, '\\:')
+    .replace(/%/g, '%%')
+    .replace(/\n/g, '\\n')
+}
+
+function rgbComponentToHex(value: string): string {
+  const numeric = Math.max(0, Math.min(255, Math.round(Number(value))))
+  return numeric.toString(16).padStart(2, '0')
+}
+
+function parseCssColor(color: string): string | null {
+  const trimmed = color.trim()
+  const rgbaMatch = trimmed.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i)
+  if (!rgbaMatch) return null
+
+  const [, r, g, b, alphaRaw] = rgbaMatch
+  const hex = `${rgbComponentToHex(r)}${rgbComponentToHex(g)}${rgbComponentToHex(b)}`
+  if (alphaRaw === undefined) {
+    return `0x${hex}`
+  }
+  const alpha = Math.max(0, Math.min(1, Number(alphaRaw)))
+  return `0x${hex}@${alpha.toFixed(2)}`
+}
+
+function normalizeColor(color: string, fallback: string): string {
+  const trimmed = color.trim()
+  if (!trimmed || trimmed === 'transparent') return fallback
+  if (trimmed.startsWith('#')) return trimmed.replace('#', '0x')
+  const parsedCss = parseCssColor(trimmed)
+  if (parsedCss) return parsedCss
+  return trimmed
+}
+
+function normalizeBoxColor(color: string): string | null {
+  const trimmed = color.trim()
+  if (!trimmed || trimmed === 'transparent') return null
+  if (trimmed.startsWith('#')) {
+    const hex = trimmed.replace('#', '')
+    if (hex.length > 6) {
+      const base = hex.slice(0, 6)
+      const alpha = (parseInt(hex.slice(6), 16) / 255).toFixed(2)
+      return `0x${base}@${alpha}`
+    }
+    return `0x${hex}@0.6`
+  }
+  const parsedCss = parseCssColor(trimmed)
+  if (parsedCss) return parsedCss
+  return trimmed
+}
+
+function escapeDrawtextValue(value: string): string {
+  return value
+    .replace(/\\/g, '/')
+    .replace(/:/g, '\\:')
+    .replace(/'/g, "\\\\'")
+}
+
+function resolveDrawtextFontFile(fontFamily?: string, fontWeight?: string): string | null {
+  if (process.platform !== 'win32') return null
+
+  const family = (fontFamily || '').toLowerCase()
+  const isBold = ['bold', '600', '700', '800', '900'].includes((fontWeight || '').toLowerCase())
+  const candidates: string[] = []
+
+  if (family.includes('yahei') || family.includes('微软雅黑') || family.includes('microsoft')) {
+    candidates.push(isBold ? 'msyhbd.ttc' : 'msyh.ttc')
+  }
+  if (family.includes('heiti') || family.includes('黑体')) {
+    candidates.push('simhei.ttf')
+  }
+  if (family.includes('song') || family.includes('宋体')) {
+    candidates.push('simsun.ttc')
+  }
+
+  candidates.push(isBold ? 'msyhbd.ttc' : 'msyh.ttc', 'simhei.ttf', 'simsun.ttc')
+
+  for (const candidate of candidates) {
+    const fullPath = path.join(process.env.WINDIR || 'C:\\Windows', 'Fonts', candidate)
+    if (fs.existsSync(fullPath)) {
+      return fullPath
+    }
+  }
+  return null
 }
 
 /**
@@ -15,9 +128,10 @@ export function buildVideoFilterGraph(
     width: number; height: number; fps: number;
     letterbox?: { ratio: number; color: string; opacity: number };
     subtitles?: ExportSubtitle[];
+    textOverlays?: ExportTextOverlay[];
   },
 ): { inputs: string[]; filterScript: string } {
-  const { width, height, fps, letterbox, subtitles } = opts
+  const { width, height, fps, letterbox, subtitles, textOverlays } = opts
   const inputs: string[] = []
   const filterParts: string[] = []
   let idx = 0
@@ -99,15 +213,11 @@ export function buildVideoFilterGraph(
       const sub = subtitles[si]
       const nextLabel = `sub${si}`
       // Escape text for ffmpeg drawtext: replace special chars
-      const escapedText = sub.text
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/'/g, "'\\\\\\''")
-        .replace(/:/g, '\\:')
-        .replace(/%/g, '%%')
-        .replace(/\n/g, '\\n')
+      const escapedText = escapeDrawtextText(sub.text)
 
       const fontSize = Math.round(sub.style.fontSize * (height / 1080)) // scale relative to export res
-      const fontColor = sub.style.color.replace('#', '0x')
+      const fontColor = normalizeColor(sub.style.color, '0xFFFFFF')
+      const fontFile = resolveDrawtextFontFile(sub.style.fontFamily, sub.style.fontWeight)
 
       // Y position based on style.position
       let yExpr: string
@@ -121,17 +231,53 @@ export function buildVideoFilterGraph(
 
       // Background box
       let boxPart = ''
-      if (sub.style.backgroundColor && sub.style.backgroundColor !== 'transparent') {
-        const bgHex = sub.style.backgroundColor.replace('#', '')
-        // Handle 8-char hex with alpha (e.g., 00000099)
-        const bgColor = bgHex.length > 6 ? `0x${bgHex.slice(0, 6)}` : `0x${bgHex}`
-        const bgAlpha = bgHex.length > 6 ? (parseInt(bgHex.slice(6), 16) / 255).toFixed(2) : '0.6'
-        boxPart = `:box=1:boxcolor=${bgColor}@${bgAlpha}:boxborderw=8`
+      const boxColor = normalizeBoxColor(sub.style.backgroundColor)
+      if (boxColor) {
+        boxPart = `:box=1:boxcolor=${boxColor}:boxborderw=8`
       }
 
-      const dtFilter = `drawtext=text='${escapedText}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${yExpr}${boxPart}:enable='between(t\\,${sub.startTime.toFixed(3)}\\,${sub.endTime.toFixed(3)})'`
+      const dtFilter = `drawtext=text='${escapedText}':fontsize=${fontSize}:fontcolor=${fontColor}${fontFile ? `:fontfile='${escapeDrawtextValue(fontFile)}'` : ''}:x=(w-text_w)/2:y=${yExpr}${boxPart}:enable='between(t\\,${sub.startTime.toFixed(3)}\\,${sub.endTime.toFixed(3)})'`
 
       filterParts.push(`[${lastLabel}]${dtFilter}[${nextLabel}]`)
+      lastLabel = nextLabel
+    }
+  }
+
+  if (textOverlays && textOverlays.length > 0) {
+    for (let ti = 0; ti < textOverlays.length; ti++) {
+      const overlay = textOverlays[ti]
+      const nextLabel = `txt${ti}`
+      const escapedText = escapeDrawtextText(overlay.text)
+      const fontSize = Math.max(12, Math.round(overlay.style.fontSize * (height / 1080)))
+      const fontColor = normalizeColor(overlay.style.color, '0xFFFFFF')
+      const fontFile = resolveDrawtextFontFile(overlay.style.fontFamily, overlay.style.fontWeight)
+      const boxColor = normalizeBoxColor(overlay.style.backgroundColor)
+      const strokeColor = overlay.style.strokeColor && overlay.style.strokeColor !== 'transparent'
+        ? normalizeColor(overlay.style.strokeColor, '0x000000')
+        : null
+      const shadowColor = overlay.style.shadowColor && overlay.style.shadowColor !== 'transparent'
+        ? normalizeColor(overlay.style.shadowColor, 'black')
+        : null
+      const anchorX = Math.max(0, Math.min(100, overlay.style.positionX))
+      const anchorY = Math.max(0, Math.min(100, overlay.style.positionY))
+      const xExpr = overlay.style.textAlign === 'left'
+        ? `(w*${(anchorX / 100).toFixed(4)})`
+        : overlay.style.textAlign === 'right'
+          ? `(w*${(anchorX / 100).toFixed(4)}-text_w)`
+          : `(w*${(anchorX / 100).toFixed(4)}-text_w/2)`
+      const yExpr = `(h*${(anchorY / 100).toFixed(4)}-text_h/2)`
+
+      let drawtext = `drawtext=text='${escapedText}':fontsize=${fontSize}:fontcolor=${fontColor}${fontFile ? `:fontfile='${escapeDrawtextValue(fontFile)}'` : ''}:x=${xExpr}:y=${yExpr}`
+      if (boxColor) drawtext += `:box=1:boxcolor=${boxColor}:boxborderw=${Math.max(0, Math.round((overlay.style.strokeWidth ?? 0) + 8))}`
+      if (strokeColor && (overlay.style.strokeWidth ?? 0) > 0) {
+        drawtext += `:borderw=${Math.max(1, Math.round(overlay.style.strokeWidth ?? 1))}:bordercolor=${strokeColor}`
+      }
+      if (shadowColor) {
+        drawtext += `:shadowcolor=${shadowColor}:shadowx=${Math.round(overlay.style.shadowOffsetX ?? 0)}:shadowy=${Math.round(overlay.style.shadowOffsetY ?? 0)}`
+      }
+      drawtext += `:enable='between(t\\,${overlay.startTime.toFixed(3)}\\,${overlay.endTime.toFixed(3)})'`
+
+      filterParts.push(`[${lastLabel}]${drawtext}[${nextLabel}]`)
       lastLabel = nextLabel
     }
   }

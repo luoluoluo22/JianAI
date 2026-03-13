@@ -1729,13 +1729,13 @@ export function VideoEditor() {
             }`}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
-            Layout
+            布局
           </button>
           {showLayoutMenu && (
             <div className="absolute top-full right-0 mt-1 w-56 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl shadow-black/50 py-1 z-[60]">
               {savingPresetName !== null ? (
                 <div className="px-2 py-1.5">
-                  <div className="text-[11px] text-zinc-400 mb-1.5 px-1">Name this layout:</div>
+                  <div className="text-[11px] text-zinc-400 mb-1.5 px-1">为这个布局命名：</div>
                   <input
                     ref={presetNameInputRef}
                     autoFocus
@@ -1751,7 +1751,7 @@ export function VideoEditor() {
                       }
                       e.stopPropagation()
                     }}
-                    placeholder="e.g. Wide Timeline"
+                    placeholder="例如：宽时间线"
                   />
                   <div className="flex gap-1.5 mt-1.5">
                     <button
@@ -1764,13 +1764,13 @@ export function VideoEditor() {
                       disabled={!savingPresetName.trim()}
                       className="flex-1 px-2 py-1 rounded bg-blue-600 text-white text-[11px] font-medium hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
-                      Save
+                      保存
                     </button>
                     <button
                       onClick={() => setSavingPresetName(null)}
                       className="px-2 py-1 rounded bg-zinc-800 text-zinc-400 text-[11px] hover:bg-zinc-700 transition-colors"
                     >
-                      Cancel
+                      取消
                     </button>
                   </div>
                 </div>
@@ -1784,19 +1784,19 @@ export function VideoEditor() {
                     className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-200 hover:bg-blue-600 hover:text-white transition-colors"
                   >
                     <Save className="h-3.5 w-3.5" />
-                    Save Current Layout...
+                    保存当前布局...
                   </button>
                   <button
                     onClick={() => { handleResetLayout(); setShowLayoutMenu(false) }}
                     className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-zinc-200 hover:bg-blue-600 hover:text-white transition-colors"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
-                    Reset to Default
+                    恢复默认布局
                   </button>
                   {layoutPresets.length > 0 && (
                     <>
                       <div className="h-px bg-zinc-700 my-1 mx-2" />
-                      <div className="px-3 py-1 text-[10px] text-zinc-500 uppercase tracking-wider">Saved Layouts</div>
+                  <div className="px-3 py-1 text-[10px] text-zinc-500 uppercase tracking-wider">已保存的布局</div>
                       {layoutPresets.map(preset => (
                         <div
                           key={preset.id}
@@ -1809,7 +1809,7 @@ export function VideoEditor() {
                             <LayoutGrid className="h-3.5 w-3.5 text-zinc-500 group-hover:text-white" />
                             {preset.name}
                           </button>
-                          <Tooltip content="Delete preset" side="top">
+                          <Tooltip content="删除布局预设" side="top">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteLayoutPreset(preset.id) }}
                               className="px-2 py-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
@@ -2111,23 +2111,23 @@ export function VideoEditor() {
                 className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
               >
                 <Pencil className="h-3 w-3" />
-                Rename
+                重命名
               </button>
               <button
                 onClick={() => handleDuplicateTimeline(timelineContextMenu.timelineId)}
                 className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
               >
                 <Copy className="h-3 w-3" />
-                Duplicate
+                复制时间线
               </button>
               <div className="h-px bg-zinc-700 my-0.5" />
               <button
                 disabled={true}
-                title="Coming Soon!"
+                title="即将推出"
                 className="w-full text-left px-3 py-1.5 text-xs text-zinc-500 flex items-center gap-2 opacity-50 cursor-not-allowed"
               >
                 <ZoomIn className="h-3 w-3" />
-                Upscale Timeline
+                时间线上采样增强
               </button>
               <div className="h-px bg-zinc-700 my-0.5" />
               <button
@@ -2138,14 +2138,14 @@ export function VideoEditor() {
                 className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
               >
                 <FileUp className="h-3 w-3" />
-                Import XML Timeline
+                导入 XML 时间线
               </button>
               <div className="relative group/export">
                 <button
                   className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
                 >
                   <Upload className="h-3 w-3" />
-                  Export
+                  导出
                   <ChevronRight className="h-3 w-3 ml-auto text-zinc-500" />
                 </button>
                 <div className="absolute left-full top-0 ml-0.5 min-w-[160px] bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl py-1 z-50 hidden group-hover/export:block">
@@ -2157,7 +2157,7 @@ export function VideoEditor() {
                     className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
                   >
                     <Upload className="h-3 w-3" />
-                    Export Timeline...
+                    导出时间线...
                   </button>
                   <button
                     onClick={() => {
@@ -2168,7 +2168,7 @@ export function VideoEditor() {
                     className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2 disabled:opacity-40"
                   >
                     <FileDown className="h-3 w-3" />
-                    Export as FCP 7 XML
+                    导出为 FCP 7 XML
                   </button>
                 </div>
               </div>
@@ -2181,7 +2181,7 @@ export function VideoEditor() {
                 className="w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
               >
                 <X className="h-3 w-3" />
-                Close Tab
+                关闭标签页
               </button>
               {timelines.length > 1 && (
                 <>
@@ -2190,7 +2190,7 @@ export function VideoEditor() {
                     className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-zinc-700 flex items-center gap-2"
                   >
                     <Trash2 className="h-3 w-3" />
-                    Delete
+                    删除
                   </button>
                 </>
               )}
@@ -2227,7 +2227,7 @@ export function VideoEditor() {
               const currentTrimTool = TRIM_TOOLS.find(t => t.id === (isTrimActive ? activeTool : lastTrimTool)) || TRIM_TOOLS[0]
               return (
                 <div className="relative flex-shrink-0">
-                  <Tooltip content={(() => { const s = getShortcutLabel(kbLayout, currentTrimTool.actionId); return s ? `${currentTrimTool.label} (${s}) — right-click or hold for more` : `${currentTrimTool.label} — right-click or hold for more` })()} side="right">
+                  <Tooltip content={(() => { const s = getShortcutLabel(kbLayout, currentTrimTool.actionId); return s ? `${currentTrimTool.label} (${s})，右键或长按查看更多` : `${currentTrimTool.label}，右键或长按查看更多` })()} side="right">
                     <button
                       onClick={() => {
                         if (trimFlyoutOpenedRef.current) { trimFlyoutOpenedRef.current = false; return }
@@ -2307,7 +2307,7 @@ export function VideoEditor() {
             
             <div className="w-6 h-px bg-zinc-700 my-1 flex-shrink-0" />
             
-            <Tooltip content={snapEnabled ? 'Snapping On' : 'Snapping Off'} side="right">
+            <Tooltip content={snapEnabled ? '吸附已开启' : '吸附已关闭'} side="right">
               <button
                 onClick={() => setSnapEnabled(!snapEnabled)}
                 className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
@@ -2338,14 +2338,14 @@ export function VideoEditor() {
 
             <div className="w-6 h-px bg-zinc-700 my-1 flex-shrink-0" />
             
-            <Tooltip content="Add Text Overlay" side="right">
+            <Tooltip content="添加文字覆盖" side="right">
               <button
                 onClick={() => addTextClip()}
                 className="p-1.5 rounded-lg transition-colors flex-shrink-0 text-cyan-400 hover:bg-cyan-900/30 hover:text-cyan-300 group relative"
               >
                 <Type className="h-4 w-4" />
                 <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-                  Add Text Overlay
+                  添加文字覆盖
                 </div>
               </button>
             </Tooltip>
@@ -2354,7 +2354,7 @@ export function VideoEditor() {
               <>
                 <div className="w-6 h-px bg-zinc-700 my-1 flex-shrink-0" />
 
-                <Tooltip content="IC-LoRA Style Transfer" side="right">
+                <Tooltip content="IC-LoRA 风格迁移" side="right">
                   <button
                     onClick={() => {
                       if (selectedClip?.type === 'video') {
@@ -2366,7 +2366,7 @@ export function VideoEditor() {
                   >
                     <Sparkles className="h-4 w-4" />
                     <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-                      IC-LoRA Style Transfer
+                      IC-LoRA 风格迁移
                     </div>
                   </button>
                 </Tooltip>
@@ -2375,7 +2375,7 @@ export function VideoEditor() {
 
             <div className="flex-1" />
 
-            <Tooltip content={showPropertiesPanel ? 'Hide Properties Panel' : 'Show Properties Panel'} side="right">
+            <Tooltip content={showPropertiesPanel ? '隐藏属性面板' : '显示属性面板'} side="right">
               <button
                 onClick={() => {
                   setShowPropertiesPanel((prev) => {
@@ -2390,12 +2390,12 @@ export function VideoEditor() {
               >
                 <PanelRight className="h-4 w-4" />
                 <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-                  {showPropertiesPanel ? 'Hide Properties' : 'Show Properties'}
+                  {showPropertiesPanel ? '隐藏属性' : '显示属性'}
                 </div>
               </button>
             </Tooltip>
 
-            <Tooltip content={showAgentPanel ? 'Hide Timeline Agent' : 'Show Timeline Agent'} side="right">
+            <Tooltip content={showAgentPanel ? '隐藏智能助理' : '显示智能助理'} side="right">
               <button
                 onClick={() => {
                   setShowAgentPanel((prev) => {
@@ -2410,7 +2410,7 @@ export function VideoEditor() {
               >
                 <MessageSquare className="h-4 w-4" />
                 <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-                  {showAgentPanel ? 'Hide Agent' : 'Show Agent'}
+                  {showAgentPanel ? '隐藏助理' : '显示助理'}
                 </div>
               </button>
             </Tooltip>
@@ -2600,13 +2600,13 @@ export function VideoEditor() {
                     title="Add subtitle track"
                   >
                     <MessageSquare className="h-3 w-3" />
-                    Subs
+                    字幕
                   </button>
                   <div className="w-px h-3 bg-zinc-700" />
                   <button 
                     onClick={() => createAdjustmentLayerAsset()}
                     className="text-[10px] text-blue-400/70 hover:text-blue-300 flex items-center gap-0.5"
-                    title="Create adjustment layer asset"
+                    title="创建调整层素材"
                   >
                     <Layers className="h-3 w-3" />
                     Adj
@@ -2672,7 +2672,7 @@ export function VideoEditor() {
                           </div>
                           {/* Row 2: tools */}
                           <div className="flex items-center gap-0">
-                            <Tooltip content="Track style settings" side="right">
+                            <Tooltip content="轨道样式设置" side="right">
                               <button
                                 onClick={() => setSubtitleTrackStyleIdx(subtitleTrackStyleIdx === realIndex ? null : realIndex)}
                                 className={`p-0.5 rounded ${subtitleTrackStyleIdx === realIndex ? 'text-amber-400 bg-amber-900/30' : 'text-amber-500/60 hover:text-amber-400'}`}
@@ -2680,7 +2680,7 @@ export function VideoEditor() {
                                 <Palette className="h-3 w-3" />
                               </button>
                             </Tooltip>
-                            <Tooltip content="Add subtitle" side="right">
+                            <Tooltip content="添加字幕" side="right">
                               <button
                                 onClick={() => addSubtitleClip(realIndex)}
                                 className="p-0.5 rounded text-amber-500/60 hover:text-amber-400"
@@ -2688,7 +2688,7 @@ export function VideoEditor() {
                                 <Plus className="h-3 w-3" />
                               </button>
                             </Tooltip>
-                            <Tooltip content={track.locked ? 'Unlock' : 'Lock'} side="right">
+                            <Tooltip content={track.locked ? '解锁' : '锁定'} side="right">
                               <button
                                 onClick={() => setTracks(tracks.map((t, i) => i === realIndex ? {...t, locked: !t.locked} : t))}
                                 className={`p-0.5 rounded ${track.locked ? 'text-yellow-400' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -2696,7 +2696,7 @@ export function VideoEditor() {
                                 {track.locked ? <Lock className="h-2.5 w-2.5" /> : <Unlock className="h-2.5 w-2.5" />}
                               </button>
                             </Tooltip>
-                            <Tooltip content={track.muted ? 'Show subtitles' : 'Hide subtitles'} side="right">
+                            <Tooltip content={track.muted ? '显示字幕' : '隐藏字幕'} side="right">
                               <button
                                 onClick={() => setTracks(tracks.map((t, i) => i === realIndex ? {...t, muted: !t.muted} : t))}
                                 className={`p-0.5 rounded ${track.muted ? 'text-red-400' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -2704,10 +2704,10 @@ export function VideoEditor() {
                                 {track.muted ? <EyeOff className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
                               </button>
                             </Tooltip>
-                            <Tooltip content="Delete track" side="right">
+                            <Tooltip content="删除轨道" side="right">
                               <button
                                 onClick={() => {
-                                  if (confirm(`Delete subtitle track "${track.name}"?`)) {
+                                  if (confirm(`删除字幕轨道“${track.name}”？`)) {
                                     pushTrackUndo()
                                     setTracks(tracks.filter((_, i) => i !== realIndex))
                                     setSubtitles(prev => prev.filter(s => s.trackIndex !== realIndex))
@@ -2723,7 +2723,7 @@ export function VideoEditor() {
                       ) : (
                       <>
                       <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-                        <Tooltip content={track.sourcePatched !== false ? 'Source patched (click to unpatch)' : 'Source unpatched (click to patch)'} side="right">
+                        <Tooltip content={track.sourcePatched !== false ? '素材已补丁（点击取消）' : '素材未补丁（点击启用）'} side="right">
                           <button
                             onClick={() => setTracks(tracks.map((t, i) => i === realIndex ? {...t, sourcePatched: !(t.sourcePatched !== false)} : t))}
                             className={`p-0.5 rounded flex-shrink-0 transition-colors ${
@@ -2749,7 +2749,7 @@ export function VideoEditor() {
                         </span>
                       </div>
                       <div className="flex items-center gap-0 flex-shrink-0">
-                        <Tooltip content={track.locked ? 'Unlock' : 'Lock'} side="right">
+                        <Tooltip content={track.locked ? '解锁' : '锁定'} side="right">
                           <button
                             onClick={() => setTracks(tracks.map((t, i) => i === realIndex ? {...t, locked: !t.locked} : t))}
                             className={`p-0.5 rounded ${track.locked ? 'text-yellow-400' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -2758,7 +2758,7 @@ export function VideoEditor() {
                           </button>
                         </Tooltip>
                         {track.kind !== 'audio' && (
-                          <Tooltip content={track.enabled === false ? 'Enable track output' : 'Disable track output'} side="right">
+                          <Tooltip content={track.enabled === false ? '启用轨道输出' : '禁用轨道输出'} side="right">
                             <button
                               onClick={() => setTracks(tracks.map((t, i) => i === realIndex ? {...t, enabled: !(t.enabled !== false)}: t))}
                               className={`p-0.5 rounded ${track.enabled === false ? 'text-zinc-600' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -2768,7 +2768,7 @@ export function VideoEditor() {
                           </Tooltip>
                         )}
                         {track.kind !== 'audio' && (
-                          <Tooltip content={track.muted ? 'Unmute' : 'Mute'} side="right">
+                          <Tooltip content={track.muted ? '取消静音' : '静音'} side="right">
                             <button
                               onClick={() => setTracks(tracks.map((t, i) => i === realIndex ? {...t, muted: !t.muted} : t))}
                               className={`p-0.5 rounded ${track.muted ? 'text-red-400' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -2783,7 +2783,7 @@ export function VideoEditor() {
                             className={`px-1 py-0.5 rounded text-[10px] font-bold leading-none ${
                               track.muted ? 'bg-red-500/80 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700'
                             }`}
-                            title={track.muted ? 'Unmute track' : 'Mute track'}
+                            title={track.muted ? '取消轨道静音' : '轨道静音'}
                           >
                             M
                           </button>
@@ -2794,13 +2794,13 @@ export function VideoEditor() {
                             className={`px-1 py-0.5 rounded text-[10px] font-bold leading-none ${
                               track.solo ? 'bg-yellow-500/80 text-black' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700'
                             }`}
-                            title={track.solo ? 'Unsolo track' : 'Solo track'}
+                            title={track.solo ? '取消独奏' : '独奏'}
                           >
                             S
                           </button>
                         )}
                         {tracks.length > 1 && (
-                          <Tooltip content="Delete track" side="right">
+                          <Tooltip content="删除轨道" side="right">
                             <button
                               onClick={() => deleteTrack(realIndex)}
                               className="p-0.5 rounded text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -3193,7 +3193,7 @@ export function VideoEditor() {
                         )}
                         <div className={`flex-1 min-w-0 ${clip.type === 'audio' ? 'relative z-10' : ''}`}>
                           <p className={`text-[10px] truncate ${clip.type === 'adjustment' ? 'text-blue-300' : clip.type === 'text' ? 'text-cyan-300' : clip.type === 'audio' ? 'text-emerald-300' : 'text-zinc-300'}`}>
-                            {clip.type === 'adjustment' ? 'Adjustment Layer' : clip.type === 'text' ? (clip.textStyle?.text?.slice(0, 30) || 'Text') : clip.asset?.prompt?.slice(0, 30) || clip.importedName || 'Clip'}
+                            {clip.type === 'adjustment' ? '调整层' : clip.type === 'text' ? (clip.textStyle?.text?.slice(0, 30) || '文字') : clip.asset?.prompt?.slice(0, 30) || clip.importedName || '片段'}
                           </p>
                           <div className="flex items-center gap-2 text-[9px] text-zinc-500">
                             <span>{clip.duration.toFixed(1)}s</span>
@@ -3288,13 +3288,13 @@ export function VideoEditor() {
                           <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-900/80 border border-blue-500/40">
                             <Loader2 className="h-3 w-3 text-blue-300 animate-spin" />
                             <span className="text-[9px] text-blue-200 font-medium">
-                              {regenProgress > 0 ? `${regenProgress}%` : 'Regenerating...'}
+                              {regenProgress > 0 ? `${regenProgress}%` : '重新生成中...'}
                             </span>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleCancelRegeneration() }}
                               className="ml-1 px-1.5 py-0.5 rounded bg-zinc-800/80 border border-zinc-600/60 text-[9px] text-zinc-300 hover:text-red-400 hover:border-red-500/50 hover:bg-red-900/30 transition-colors"
                             >
-                              Cancel
+                              取消
                             </button>
                           </div>
                         </div>
@@ -3434,7 +3434,7 @@ export function VideoEditor() {
                               </div>
                             )}
                             {/* Cancel button */}
-                            <Tooltip content="Cancel generation" side="top">
+                            <Tooltip content="取消生成" side="top">
                               <button
                                 onClick={(e) => { e.stopPropagation(); cancelGapGeneration() }}
                                 className="absolute top-0.5 right-0.5 p-0.5 rounded hover:bg-zinc-700/80 text-zinc-500 hover:text-red-400 transition-colors"
@@ -3813,7 +3813,7 @@ export function VideoEditor() {
             onClick={() => setShowExportModal(true)}
           >
             <Upload className="h-3 w-3 mr-1" />
-            Export
+            导出
           </Button>
           
           
@@ -3834,10 +3834,10 @@ export function VideoEditor() {
                   onClick={handleExportSrt}
                   disabled={subtitles.length === 0}
                   className="h-6 px-2 rounded bg-amber-900/30 border border-amber-700/30 text-amber-400 hover:bg-amber-900/50 text-[10px] flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  title="Export SRT subtitles"
+                  title="导出 SRT 字幕"
                 >
                   <FileDown className="h-3 w-3" />
-                  Export SRT
+                  导出 SRT
                 </button>
               </div>
               <input
@@ -3882,7 +3882,7 @@ export function VideoEditor() {
               </button>
             </Tooltip>
             <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">{Math.round(zoom * 100)}%</span>
-            <Tooltip content="Fit to view (Ctrl+0)" side="top">
+            <Tooltip content="适配视图（Ctrl+0）" side="top">
               <button
                 onClick={handleFitToView}
                 className="p-0.5 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors ml-0.5"
@@ -3903,7 +3903,7 @@ export function VideoEditor() {
           onMouseDown={(e) => handleResizeDragStart('right', e)}
         >
           <div className="absolute inset-y-0 -left-1 -right-1" />
-          <Tooltip content="Collapse Properties Panel" side="left">
+          <Tooltip content="收起右侧面板" side="left">
             <button
               className="absolute top-1/2 -translate-y-1/2 -left-3 w-6 h-8 bg-zinc-800 border border-zinc-700 rounded-l-md flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors opacity-0 group-hover:opacity-100 z-20 cursor-pointer"
               onClick={(e) => {
@@ -4070,7 +4070,7 @@ export function VideoEditor() {
         >
           <button
             onClick={() => {
-              const newName = prompt('Rename bin:', binContextMenu.bin)
+              const newName = prompt('重命名分组：', binContextMenu.bin)
               if (newName?.trim() && currentProjectId && newName.trim() !== binContextMenu.bin) {
                 pushAssetUndoRef.current()
                 for (const asset of assets.filter(a => a.bin === binContextMenu.bin)) {
@@ -4083,7 +4083,7 @@ export function VideoEditor() {
             className="w-full text-left px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 flex items-center gap-3"
           >
             <Pencil className="h-3.5 w-3.5 text-zinc-500" />
-            <span>Rename Bin</span>
+            <span>重命名分组</span>
           </button>
           <button
             onClick={() => {
@@ -4099,7 +4099,7 @@ export function VideoEditor() {
             className="w-full text-left px-3 py-1.5 text-red-400 hover:bg-zinc-700 flex items-center gap-3"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete Bin</span>
+            <span>删除分组</span>
           </button>
         </div>
       )}
