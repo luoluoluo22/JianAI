@@ -25,6 +25,7 @@ function AppContent() {
   const { status, processStatus, isLoading: backendLoading, error: backendError } = useBackend()
   const { settings, saveLtxApiKey, saveFalApiKey, forceApiGenerations, isLoaded, runtimePolicyLoaded } = useAppSettings()
 
+  const [localBackendDisabled, setLocalBackendDisabled] = useState(false)
   const [pythonReady, setPythonReady] = useState<boolean | null>(null)
   const [backendStarted, setBackendStarted] = useState(false)
   const [setupState, setSetupState] = useState<SetupState>('loading')
@@ -48,7 +49,25 @@ function AppContent() {
 
   const isBackendRestarting = processStatus === 'restarting'
   const isBackendDead = processStatus === 'dead'
-  const waitingForRuntimePolicy = processStatus === 'alive' && !runtimePolicyLoaded
+  const waitingForRuntimePolicy = !localBackendDisabled && processStatus === 'alive' && !runtimePolicyLoaded
+
+  useEffect(() => {
+    const loadAppInfo = async () => {
+      try {
+        const info = await window.electronAPI.getAppInfo()
+        setLocalBackendDisabled(info.localBackendDisabled)
+        if (info.localBackendDisabled) {
+          setPythonReady(true)
+          setBackendStarted(true)
+          setSetupState({ needsSetup: false, needsLicense: false })
+          setRequiredModelsGate('ready')
+        }
+      } catch (e) {
+        logger.error(`Failed to load app info: ${e}`)
+      }
+    }
+    void loadAppInfo()
+  }, [])
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -77,6 +96,7 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
+    if (localBackendDisabled) return
     const check = async () => {
       try {
         const result = await window.electronAPI.checkPythonReady()
@@ -90,6 +110,7 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
+    if (localBackendDisabled) return
     if (pythonReady !== true || backendStarted) return
     setBackendStarted(true)
     const start = async () => {
@@ -105,6 +126,7 @@ function AppContent() {
   }, [pythonReady, backendStarted])
 
   useEffect(() => {
+    if (localBackendDisabled) return
     const checkFirstRun = async () => {
       try {
         const next = await window.electronAPI.checkFirstRun()
@@ -203,6 +225,10 @@ function AppContent() {
   }, [shouldAutoFinalizeForcedFirstRun, handleFirstRunComplete])
 
   useEffect(() => {
+    if (localBackendDisabled) {
+      setRequiredModelsGate('ready')
+      return
+    }
     if (setupState === 'loading' || waitingForRuntimePolicy || backendLoading || !status.connected) {
       return
     }
@@ -240,6 +266,7 @@ function AppContent() {
     setupState,
     status.connected,
     waitingForRuntimePolicy,
+    localBackendDisabled,
   ])
 
   const restartingOverlay = isBackendRestarting ? (
@@ -255,9 +282,9 @@ function AppContent() {
   ) : null
 
   const showGlobalControls = currentView !== 'home' && status.connected && setupState !== 'loading' && !setupState.needsSetup
-  const shouldBlockUntilSettingsLoaded = forceApiGenerations && !isLoaded
-  const shouldShowForcedFirstRunUpsell = isForcedFirstRun && isLoaded && !settings.hasLtxApiKey
-  const shouldShowGlobalForcedUpsell = forceApiGenerations && setupState !== 'loading' && !setupState.needsSetup && isLoaded && !settings.hasLtxApiKey
+  const shouldBlockUntilSettingsLoaded = !localBackendDisabled && forceApiGenerations && !isLoaded
+  const shouldShowForcedFirstRunUpsell = !localBackendDisabled && isForcedFirstRun && isLoaded && !settings.hasLtxApiKey
+  const shouldShowGlobalForcedUpsell = !localBackendDisabled && forceApiGenerations && setupState !== 'loading' && !setupState.needsSetup && isLoaded && !settings.hasLtxApiKey
   const shouldBlockForLtxKey = shouldShowForcedFirstRunUpsell || shouldShowGlobalForcedUpsell
 
   useEffect(() => {
@@ -339,7 +366,7 @@ function AppContent() {
     return <PythonSetup onReady={() => setPythonReady(true)} />
   }
 
-  if (isBackendDead) {
+  if (!localBackendDisabled && isBackendDead) {
     return (
       <div className="h-screen bg-background flex items-center justify-center p-6">
         <div className="w-full max-w-5xl rounded-xl border border-zinc-700 bg-zinc-900/80 p-6 shadow-2xl">
@@ -360,13 +387,14 @@ function AppContent() {
   }
 
   const waitingForRequiredModels =
+    !localBackendDisabled &&
     requiredModelsGate === 'checking' &&
     status.connected &&
     setupState !== 'loading' &&
     !waitingForRuntimePolicy &&
     !forceApiGenerations
 
-  if (backendLoading || setupState === 'loading' || waitingForRuntimePolicy || waitingForRequiredModels) {
+  if ((!localBackendDisabled && backendLoading) || setupState === 'loading' || waitingForRuntimePolicy || waitingForRequiredModels) {
     return (
       <div className="relative h-screen w-screen">
         <div className="h-screen bg-background flex items-center justify-center">
@@ -381,7 +409,7 @@ function AppContent() {
     )
   }
 
-  if (backendError && !status.connected) {
+  if (!localBackendDisabled && backendError && !status.connected) {
     return (
       <div className="h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md">

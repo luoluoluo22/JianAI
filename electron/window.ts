@@ -43,11 +43,25 @@ export function createWindow(): BrowserWindow {
     mainWindow.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'))
   }
 
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    logger.error(`[window] did-fail-load code=${errorCode} description=${errorDescription} url=${validatedURL}`)
+  })
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    logger.error(`[window] render-process-gone reason=${details.reason} exitCode=${details.exitCode}`)
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    logger.info('[window] did-finish-load')
+  })
+
   mainWindow.once('ready-to-show', () => {
+    logger.info('[window] ready-to-show')
     mainWindow?.show()
   })
 
   mainWindow.on('closed', () => {
+    logger.info('[window] closed')
     mainWindow = null
   })
 

@@ -59,6 +59,7 @@ import { GapGenerationModal } from './editor/GapGenerationModal'
 import { GenerationErrorDialog } from '../components/GenerationErrorDialog'
 import { I2vGenerationModal } from './editor/I2vGenerationModal'
 import { SubtitleTrackStyleEditor } from './editor/SubtitleTrackStyleEditor'
+import { EditingAgentPanel } from './editor/EditingAgentPanel'
 
 // Custom scissors cursor SVG for the blade tool (white with dark outline for contrast)
 const SCISSORS_CURSOR_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='6' cy='6' r='3'/><path d='M8.12 8.12 12 12'/><path d='M20 4 8.12 15.88'/><circle cx='6' cy='18' r='3'/><path d='M14.8 14.8 20 20'/></svg>`
@@ -233,6 +234,7 @@ export function VideoEditor() {
   
   // Right properties panel: user-controlled open/close (not tied to selection)
   const [showPropertiesPanel, setShowPropertiesPanel] = useState(false)
+  const [showAgentPanel, setShowAgentPanel] = useState(true)
 
   // Clip properties panel collapsible sections
   const [showTransitions, setShowTransitions] = useState(false)
@@ -2375,7 +2377,13 @@ export function VideoEditor() {
 
             <Tooltip content={showPropertiesPanel ? 'Hide Properties Panel' : 'Show Properties Panel'} side="right">
               <button
-                onClick={() => setShowPropertiesPanel(p => !p)}
+                onClick={() => {
+                  setShowPropertiesPanel((prev) => {
+                    const next = !prev
+                    if (next) setShowAgentPanel(false)
+                    return next
+                  })
+                }}
                 className={`p-1.5 rounded-lg transition-colors flex-shrink-0 group relative ${
                   showPropertiesPanel ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
                 }`}
@@ -2383,6 +2391,26 @@ export function VideoEditor() {
                 <PanelRight className="h-4 w-4" />
                 <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
                   {showPropertiesPanel ? 'Hide Properties' : 'Show Properties'}
+                </div>
+              </button>
+            </Tooltip>
+
+            <Tooltip content={showAgentPanel ? 'Hide Timeline Agent' : 'Show Timeline Agent'} side="right">
+              <button
+                onClick={() => {
+                  setShowAgentPanel((prev) => {
+                    const next = !prev
+                    if (next) setShowPropertiesPanel(false)
+                    return next
+                  })
+                }}
+                className={`mt-2 p-1.5 rounded-lg transition-colors flex-shrink-0 group relative ${
+                  showAgentPanel ? 'bg-emerald-500 text-zinc-950' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                }`}
+              >
+                <MessageSquare className="h-4 w-4" />
+                <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
+                  {showAgentPanel ? 'Hide Agent' : 'Show Agent'}
                 </div>
               </button>
             </Tooltip>
@@ -3866,8 +3894,8 @@ export function VideoEditor() {
         </div>
       </div>
       
-      {/* Right Panel - Properties (user-controlled toggle) */}
-      {showPropertiesPanel && (
+      {/* Right Panel - Properties / Agent */}
+      {(showPropertiesPanel || showAgentPanel) && (
         <>
         {/* Right resize handle with collapse button */}
         <div
@@ -3878,13 +3906,30 @@ export function VideoEditor() {
           <Tooltip content="Collapse Properties Panel" side="left">
             <button
               className="absolute top-1/2 -translate-y-1/2 -left-3 w-6 h-8 bg-zinc-800 border border-zinc-700 rounded-l-md flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors opacity-0 group-hover:opacity-100 z-20 cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); setShowPropertiesPanel(false) }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowPropertiesPanel(false)
+                setShowAgentPanel(false)
+              }}
               onMouseDown={(e) => e.stopPropagation()}
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </Tooltip>
         </div>
+        {showAgentPanel ? (
+          <EditingAgentPanel
+            clips={clips}
+            tracks={tracks}
+            selectedClipIds={selectedClipIds}
+            currentTime={currentTime}
+            rightPanelWidth={layout.rightPanelWidth}
+            pushUndo={pushUndo}
+            setClips={setClips}
+            setSelectedClipIds={setSelectedClipIds}
+          />
+        ) : (
+          <>
         {/* Subtitle properties */}
         {selectedSubtitleId && selectedClipIds.size === 0 && (() => {
           const selectedSub = subtitles.find(s => s.id === selectedSubtitleId)
@@ -3948,6 +3993,8 @@ export function VideoEditor() {
             <span>No clip selected</span>
           </div>
         ) : null}
+          </>
+        )}
         </>
       )}
       

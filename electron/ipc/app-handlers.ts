@@ -6,6 +6,7 @@ import { isPythonReady, downloadPythonEmbed } from '../python-setup'
 import { getBackendHealthStatus, getBackendUrl, getAuthToken, getAdminToken, startPythonBackend } from '../python-backend'
 import { getMainWindow } from '../window'
 import { getAnalyticsState, setAnalyticsEnabled, sendAnalyticsEvent } from '../analytics'
+import { isLocalBackendDisabled } from '../config'
 
 function getModelsPath(): string {
   const modelsPath = path.join(app.getPath('userData'), 'models')
@@ -85,6 +86,7 @@ export function registerAppHandlers(): void {
       isPackaged: app.isPackaged,
       modelsPath: getModelsPath(),
       userDataPath: app.getPath('userData'),
+      localBackendDisabled: isLocalBackendDisabled,
     }
   })
 
@@ -130,16 +132,25 @@ export function registerAppHandlers(): void {
   })
 
   ipcMain.handle('check-python-ready', () => {
+    if (isLocalBackendDisabled) {
+      return { ready: true }
+    }
     return isPythonReady()
   })
 
   ipcMain.handle('start-python-setup', async () => {
+    if (isLocalBackendDisabled) {
+      return
+    }
     await downloadPythonEmbed((progress) => {
       getMainWindow()?.webContents.send('python-setup-progress', progress)
     })
   })
 
   ipcMain.handle('start-python-backend', async () => {
+    if (isLocalBackendDisabled) {
+      return
+    }
     await startPythonBackend()
   })
 

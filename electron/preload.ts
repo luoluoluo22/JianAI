@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('check-gpu'),
   
   // Get app info
-  getAppInfo: (): Promise<{ version: string; isPackaged: boolean; modelsPath: string; userDataPath: string }> =>
+  getAppInfo: (): Promise<{ version: string; isPackaged: boolean; modelsPath: string; userDataPath: string; localBackendDisabled: boolean }> =>
     ipcRenderer.invoke('get-app-info'),
   
   // First-run setup
@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Log viewer
   getLogs: (): Promise<LogsResponse> => ipcRenderer.invoke('get-logs'),
   getLogPath: (): Promise<{ logPath: string; logDir: string }> => ipcRenderer.invoke('get-log-path'),
+  getAgentDebugLog: (): Promise<LogsResponse> => ipcRenderer.invoke('get-agent-debug-log'),
+  appendAgentDebugLog: (line: string): Promise<void> => ipcRenderer.invoke('append-agent-debug-log', line),
   openLogFolder: (): Promise<boolean> => ipcRenderer.invoke('open-log-folder'),
   
   // Get resources path (for video assets in production)
@@ -146,7 +148,7 @@ declare global {
       getModelsPath: () => Promise<string>
       readLocalFile: (filePath: string) => Promise<{ data: string; mimeType: string }>
       checkGpu: () => Promise<{ available: boolean; name?: string; vram?: number }>
-      getAppInfo: () => Promise<{ version: string; isPackaged: boolean; modelsPath: string; userDataPath: string }>
+      getAppInfo: () => Promise<{ version: string; isPackaged: boolean; modelsPath: string; userDataPath: string; localBackendDisabled: boolean }>
       checkFirstRun: () => Promise<{ needsSetup: boolean; needsLicense: boolean }>
       acceptLicense: () => Promise<boolean>
       completeSetup: () => Promise<boolean>
@@ -157,6 +159,8 @@ declare global {
       showItemInFolder: (filePath: string) => Promise<void>
       getLogs: () => Promise<LogsResponse>
       getLogPath: () => Promise<{ logPath: string; logDir: string }>
+      getAgentDebugLog: () => Promise<LogsResponse>
+      appendAgentDebugLog: (line: string) => Promise<void>
       openLogFolder: () => Promise<boolean>
       getResourcePath: () => Promise<string | null>
       getDownloadsPath: () => Promise<string>

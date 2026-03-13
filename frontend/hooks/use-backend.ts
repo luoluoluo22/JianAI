@@ -162,10 +162,28 @@ export function useBackend(): UseBackendReturn {
 
   useEffect(() => {
     let cancelled = false
+    let disabled = false
+
+    const initAppMode = async () => {
+      try {
+        const info = await window.electronAPI.getAppInfo()
+        if (cancelled) return
+        if (info.localBackendDisabled) {
+          disabled = true
+          setProcessStatus(null)
+          setIsLoading(false)
+        }
+      } catch (err) {
+        logger.error(`Failed to load app info: ${err}`)
+      }
+    }
 
     const applyStatus = async (value: unknown) => {
+      if (disabled || cancelled) {
+        return
+      }
       const payload = toBackendHealthStatus(value)
-      if (!payload || cancelled) {
+      if (!payload) {
         return
       }
       await handleBackendStatus(payload)
@@ -177,6 +195,10 @@ export function useBackend(): UseBackendReturn {
 
     const init = async () => {
       try {
+        await initAppMode()
+        if (cancelled || disabled) {
+          return
+        }
         const snapshot = await window.electronAPI.getBackendHealthStatus()
         await applyStatus(snapshot)
       } catch (err) {

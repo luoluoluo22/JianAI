@@ -1,5 +1,7 @@
 import './app-paths'
 import { app } from 'electron'
+import fs from 'fs'
+import path from 'path'
 import { setupCSP } from './csp'
 import { registerExportHandlers } from './export/export-handler'
 import { stopExportProcess } from './export/ffmpeg-utils'
@@ -13,6 +15,15 @@ import { initAutoUpdater } from './updater'
 import { createWindow, getMainWindow } from './window'
 import { sendAnalyticsEvent } from './analytics'
 
+function appendBootLog(message: string): void {
+  try {
+    const baseDir = path.dirname(process.execPath)
+    fs.appendFileSync(path.join(baseDir, 'boot.log'), `${new Date().toISOString()} ${message}\n`)
+  } catch {
+    // Best effort only.
+  }
+}
+
 function logAppVersion(): void {
   if (!app.isPackaged) {
     console.log('[LTX Desktop] Running in development mode')
@@ -21,11 +32,15 @@ function logAppVersion(): void {
   }
 }
 
+appendBootLog('main:start')
 const gotLock = app.requestSingleInstanceLock()
+appendBootLog(`main:gotLock=${gotLock}`)
 
 if (!gotLock) {
+  appendBootLog('main:quit-no-lock')
   app.quit()
 } else {
+  appendBootLog('main:register-handlers')
   initSessionLog()
   logAppVersion()
 
@@ -53,7 +68,9 @@ if (!gotLock) {
   })
 
   app.whenReady().then(async () => {
+    appendBootLog('main:whenReady')
     setupCSP()
+    appendBootLog('main:createWindow')
     createWindow()
     initAutoUpdater()
     // Python setup + backend start are now driven by the renderer via IPC
@@ -63,6 +80,7 @@ if (!gotLock) {
   })
 
   app.on('window-all-closed', () => {
+    appendBootLog('main:window-all-closed')
     if (process.platform !== 'darwin') {
       stopPythonBackend()
       app.quit()
@@ -70,12 +88,14 @@ if (!gotLock) {
   })
 
   app.on('activate', () => {
+    appendBootLog('main:activate')
     if (getMainWindow() === null) {
       createWindow()
     }
   })
 
   app.on('before-quit', () => {
+    appendBootLog('main:before-quit')
     stopExportProcess()
     stopPythonBackend()
   })

@@ -101,8 +101,37 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [runtimePolicyLoaded, setRuntimePolicyLoaded] = useState(false)
   const [forceApiGenerations, setForceApiGenerations] = useState(true)
   const [backendProcessStatus, setBackendProcessStatus] = useState<BackendProcessStatus | null>(null)
+  const [backendDisabled, setBackendDisabled] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+
+    const init = async () => {
+      try {
+        const info = await window.electronAPI.getAppInfo()
+        if (cancelled || !info.localBackendDisabled) {
+          return
+        }
+        setBackendDisabled(true)
+        setForceApiGenerations(false)
+        setIsLoaded(true)
+        setRuntimePolicyLoaded(true)
+      } catch {
+        // Best-effort check only.
+      }
+    }
+
+    void init()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (backendDisabled) {
+      return
+    }
     if (backendProcessStatus !== 'alive') return
 
     let cancelled = false
@@ -143,6 +172,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [backendProcessStatus])
 
   useEffect(() => {
+    if (backendDisabled) {
+      return
+    }
     let cancelled = false
 
     const applyStatus = (value: unknown) => {
@@ -185,6 +217,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (backendDisabled) {
+      return
+    }
     if (isLoaded || backendProcessStatus !== 'alive') return
 
     let cancelled = false
@@ -210,6 +245,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [backendProcessStatus, isLoaded, refreshSettings])
 
   useEffect(() => {
+    if (backendDisabled) {
+      return
+    }
     if (!isLoaded || backendProcessStatus !== 'alive') return
     const syncTimer = setTimeout(async () => {
       try {
@@ -274,7 +312,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [refreshSettings])
 
   const shouldVideoGenerateWithLtxApi =
-    forceApiGenerations || (settings.userPrefersLtxApiVideoGenerations && settings.hasLtxApiKey)
+    !backendDisabled && (forceApiGenerations || (settings.userPrefersLtxApiVideoGenerations && settings.hasLtxApiKey))
 
   const contextValue = useMemo<AppSettingsContextValue>(
     () => ({

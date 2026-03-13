@@ -15,6 +15,7 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = Split-Path -Parent $ScriptDir
 $ReleaseDir = Join-Path $ProjectDir "release"
+$DisableLocalBackend = $env:LTX_DISABLE_LOCAL_BACKEND -eq "1"
 
 Set-Location $ProjectDir
 
@@ -24,7 +25,7 @@ if (-not (Test-Path "dist") -or -not (Test-Path "dist-electron")) {
     exit 1
 }
 
-if (-not (Test-Path "python-embed")) {
+if (-not $DisableLocalBackend -and -not (Test-Path "python-embed")) {
     Write-Host "ERROR: Python environment not found. Run local-build.ps1 or prepare-python.ps1 first." -ForegroundColor Red
     exit 1
 }

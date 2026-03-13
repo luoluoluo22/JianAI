@@ -1,9 +1,28 @@
 import { app } from 'electron'
+import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { getProjectAssetsPath } from './app-state'
 
 export const isDev = !app.isPackaged
+
+function readLocalBackendDisabledMarker(): boolean {
+  const markerValue = 'disabled-local-backend'
+
+  try {
+    const hashPath = isDev
+      ? path.join(process.cwd(), 'python-deps-hash.txt')
+      : path.join(process.resourcesPath, 'python-deps-hash.txt')
+    if (!fs.existsSync(hashPath)) {
+      return false
+    }
+    return fs.readFileSync(hashPath, 'utf-8').trim() === markerValue
+  } catch {
+    return false
+  }
+}
+
+export const isLocalBackendDisabled = readLocalBackendDisabledMarker()
 
 // Get directory - works in both CJS and ESM contexts
 export function getCurrentDir(): string {

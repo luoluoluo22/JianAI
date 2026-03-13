@@ -16,6 +16,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = Split-Path -Parent $ScriptDir
 $PythonEmbedDir = Join-Path $ProjectDir "python-embed"
 $ReleaseDir = Join-Path $ProjectDir "release"
+$DisableLocalBackend = $env:LTX_DISABLE_LOCAL_BACKEND -eq "1"
+$PythonHashFile = Join-Path $ProjectDir "python-deps-hash.txt"
 
 Write-Host @"
 
@@ -56,7 +58,7 @@ if ($Clean) {
 # ============================================================
 # Step 1: Prepare Python environment
 # ============================================================
-if (-not $SkipPython) {
+if (-not $SkipPython -and -not $DisableLocalBackend) {
     Write-Host "`n[1/3] Preparing Python environment..." -ForegroundColor Yellow
 
     if (Test-Path $PythonEmbedDir) {
@@ -69,13 +71,21 @@ if (-not $SkipPython) {
         }
     }
 } else {
-    Write-Host "`n[1/3] Skipping Python preparation (using existing)..." -ForegroundColor DarkYellow
+    if ($DisableLocalBackend) {
+        Write-Host "`n[1/3] Local backend disabled for this build; skipping Python preparation..." -ForegroundColor DarkYellow
+    } else {
+        Write-Host "`n[1/3] Skipping Python preparation (using existing)..." -ForegroundColor DarkYellow
+    }
 }
 
-if (-not (Test-Path $PythonEmbedDir)) {
+if (-not $DisableLocalBackend -and -not (Test-Path $PythonEmbedDir)) {
     Write-Host "ERROR: Python environment not found at $PythonEmbedDir" -ForegroundColor Red
     Write-Host "Run without -SkipPython to create it." -ForegroundColor Red
     exit 1
+}
+
+if ($DisableLocalBackend -and -not (Test-Path $PythonHashFile)) {
+    Set-Content -Path $PythonHashFile -Value "disabled-local-backend"
 }
 
 # ============================================================
