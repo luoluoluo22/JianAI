@@ -1,4 +1,4 @@
-# Contributing to LTX Desktop
+# Contributing to 剪艾 JianAI
 
 Thanks for taking the time to contribute!
 

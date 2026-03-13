@@ -3919,8 +3919,11 @@ export function VideoEditor() {
         </div>
         {showAgentPanel ? (
           <EditingAgentPanel
+            assets={assets}
+            visibleAssets={filteredAssets}
             clips={clips}
             tracks={tracks}
+            selectedAssetIds={selectedAssetIds}
             selectedClipIds={selectedClipIds}
             currentTime={currentTime}
             rightPanelWidth={layout.rightPanelWidth}

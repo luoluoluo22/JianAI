@@ -1,0 +1,110 @@
+appId: com.jianai.desktop
+productName: 剪艾 JianAI
+copyright: Copyright © 2026 JianAI
+
+directories:
+  output: release
+  buildResources: resources
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - electron/**/*.cjs
+  - package.json
+  - LICENSE.txt
+  - NOTICES.md
+  - "!**/*.map"
+
+asarUnpack:
+  - dist/splash/**
+
+extraResources:
+  - from: backend
+    to: backend
+    filter:
+      - "**/*.py"
+      - pyproject.toml
+      - "!**/__pycache__/**"
+      - "!**/*.pyc"
+      - "!.venv/**"
+      - "!outputs/**"
+      - "!models/**"
+      - "!tests/**"
+  - from: python-deps-hash.txt
+    to: python-deps-hash.txt
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  artifactName: ${productName}-Setup.${ext}
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  include: resources/installer.nsh
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 剪艾 JianAI
+
+mac:
+  hardenedRuntime: true
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  notarize: false
+  signIgnore:
+    - "/python/.*\\.(py|pyc|pyi|pxd|pyx|h|hpp|cpp|c|cuh|cu|tcl|txt|json|yaml|yml|toml|cfg|md|rst|html|css|enc|msg|cmake|gif|png|jpg|svg|xml|jinja|typed|al)$"
+    - "/python/.*\\.dist-info/"
+  extraResources:
+    - from: python-embed
+      to: python
+      filter:
+        - "**/*"
+        - "!__pycache__/**"
+        - "!*.pyc"
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
+  icon: resources/icon.icns
+  category: public.app-category.video
+  artifactName: ${productName}-${arch}.${ext}
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: resources/icons
+  category: Video
+  artifactName: ${productName}-${arch}.${ext}
+
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
+
+publish: null

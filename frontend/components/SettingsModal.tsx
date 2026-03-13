@@ -723,7 +723,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       </label>
                     </div>
                     <p className="text-xs text-zinc-500 leading-relaxed">
-                      Share anonymous usage data to help improve LTX Desktop.
+                      Share anonymous usage data to help improve JianAI.
                       Only basic technical information is collected — never personal data or generated content.
                     </p>
                   </div>
@@ -1175,7 +1175,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                 <div className="space-y-6">
                   {/* App Identity */}
                   <div className="text-center space-y-2">
-                    <h3 className="text-lg font-bold text-white">LTX Desktop</h3>
+                    <h3 className="text-lg font-bold text-white">剪艾 JianAI</h3>
                     <p className="text-sm text-zinc-400">Version {appVersion || '...'}</p>
                     <p className="text-xs text-zinc-500">AI-Powered Video Editor</p>
                   </div>
@@ -1238,7 +1238,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
 
                   {/* Copyright */}
                   <p className="text-center text-xs text-zinc-600">
-                    Copyright © 2026 Lightricks
+                    Copyright © 2026 JianAI
                   </p>
                 </div>
               )}

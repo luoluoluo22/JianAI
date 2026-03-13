@@ -170,7 +170,7 @@ function loadProjectsFromStorage(): Project[] {
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [currentView, setCurrentView] = useState<ViewType>('home')
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
-  const [currentTab, setCurrentTab] = useState<ProjectTab>('gen-space')
+  const [currentTab, setCurrentTab] = useState<ProjectTab>('video-editor')
   const [genSpaceEditImageUrl, setGenSpaceEditImageUrl] = useState<string | null>(null)
   const [genSpaceEditMode, setGenSpaceEditMode] = useState<'image' | 'video' | null>(null)
   const [genSpaceAudioUrl, setGenSpaceAudioUrl] = useState<string | null>(null)
@@ -482,7 +482,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const openProject = useCallback((id: string) => {
     setCurrentProjectId(id)
     setCurrentView('project')
-    setCurrentTab('gen-space')
+    setCurrentTab('video-editor')
   }, [])
   
   const goHome = useCallback(() => {

@@ -1,8 +1,10 @@
-import type { TimelineClip, Track } from '../../types/project'
+import type { Asset, TimelineClip, Track } from '../../types/project'
 import { DEFAULT_COLOR_CORRECTION, DEFAULT_TEXT_STYLE } from '../../types/project'
 import { DEFAULT_DISSOLVE_DURATION, formatTime, migrateClip, resolveOverlaps } from './video-editor-utils'
 
 export interface EditingAgentContext {
+  assets: Asset[]
+  visibleAssets?: Asset[]
   clips: TimelineClip[]
   tracks: Track[]
   selectedClipIds: Set<string>
@@ -22,16 +24,27 @@ export interface EditingAgentApplyResult {
   summary: string
 }
 
+export interface PendingAgentIntent {
+  kind: 'place_asset'
+  assetId: string | null
+  assetLabel: string | null
+  positionText: string | null
+}
+
 export type EditingAgentAction =
   | { type: 'select_clips'; clipIds: string[] }
   | { type: 'move_clips'; clipIds: string[]; deltaSeconds?: number; absoluteStartTime?: number }
   | { type: 'delete_clips'; clipIds: string[] }
   | { type: 'duplicate_clips'; clipIds: string[]; offsetSeconds: number }
+  | { type: 'add_asset_to_timeline'; assetId: string; trackIndex?: number; startTime?: number }
+  | { type: 'insert_asset_after_clip'; assetId: string; clipId: string; trackIndex?: number }
+  | { type: 'insert_asset_before_clip'; assetId: string; clipId: string; trackIndex?: number }
   | { type: 'set_duration'; clipIds: string[]; duration: number }
   | { type: 'set_speed'; clipIds: string[]; speed: number }
   | { type: 'set_muted'; clipIds: string[]; muted: boolean }
   | { type: 'set_volume'; clipIds: string[]; volume: number }
   | { type: 'set_transition'; clipIds: string[]; edge: 'in' | 'out'; enabled: boolean; duration: number }
+  | { type: 'trim_clip'; clipIds: string[]; trimInSeconds?: number; trimOutSeconds?: number }
   | { type: 'split_clip'; clipId: string; time: number }
   | { type: 'add_text'; text: string; startTime: number; duration: number }
 
@@ -40,8 +53,13 @@ type ClipRefResolution = {
   label: string
 }
 
+type PlacementResolution =
+  | { kind: 'absolute'; startTime: number; trackIndex?: number; text: string }
+  | { kind: 'after'; clipId: string; trackIndex?: number; text: string }
+  | { kind: 'before'; clipId: string; trackIndex?: number; text: string }
+
 const EXAMPLE_REPLY =
-  '我现在支持这些命令：列出片段、选中第一个片段、把选中的片段往后挪2秒、把第二个片段时长改成3秒、把第一个片段速度调到2倍、给第一个片段加0.5秒淡入、删除最后一个片段、在5秒添加标题 欢迎来到片场。'
+  '我现在支持这些命令：列出素材、把第一个视频放到5秒、把第二张图片放到最后一个片段后、列出片段、选中第一个片段、把选中的片段往后挪2秒、把第一个片段开头裁掉1秒、在12秒切开第一个片段、给第一个片段加0.5秒淡入、删除最后一个片段、在5秒添加标题 欢迎来到片场。'
 
 function getSortedClips(clips: TimelineClip[]): TimelineClip[] {
   return [...clips].sort((a, b) => {
@@ -60,10 +78,35 @@ function clipLabel(clip: TimelineClip, index: number, tracks: Track[]): string {
   return `${index + 1}. ${name} [${trackName}] ${formatTime(clip.startTime)} - ${(clip.duration).toFixed(1)}s`
 }
 
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\.(png|jpg|jpeg|webp|gif|mp4|mov|mkv|mp3|wav|aac)$/i, '')
+    .replace(/[“”"'`]/g, '')
+    .replace(/\s+/g, '')
+}
+
+export function assetDisplayName(asset: Asset): string {
+  const prompt = asset.prompt?.trim()
+  if (prompt) return prompt
+  const fileName = asset.path.split(/[/\\]/).pop()?.trim()
+  if (fileName) return fileName
+  return asset.type
+}
+
+function assetLabel(asset: Asset, index: number): string {
+  const duration = asset.duration ? ` ${asset.duration.toFixed(1)}s` : ''
+  return `${index + 1}. ${assetDisplayName(asset)} [${asset.type}]${duration}`
+}
+
+function getOrderedAssets(context: EditingAgentContext): Asset[] {
+  return context.visibleAssets && context.visibleAssets.length > 0 ? context.visibleAssets : context.assets
+}
+
 export function summarizeTimelineForAgent(context: EditingAgentContext): string {
   const sorted = getSortedClips(context.clips)
   if (sorted.length === 0) {
-    return '当前时间线没有片段。你可以说“在5秒添加标题 你好世界”。'
+    return '当前时间线没有片段。你可以说“把第一个视频放到5秒”或“在5秒添加标题 你好世界”。'
   }
 
   const selected = sorted.filter((clip) => context.selectedClipIds.has(clip.id))
@@ -75,6 +118,29 @@ export function summarizeTimelineForAgent(context: EditingAgentContext): string 
   ]
   if (sorted.length > 12) {
     lines.push(`还有 ${sorted.length - 12} 个片段未展开。`)
+  }
+  return lines.join('\n')
+}
+
+export function summarizeAssetsForAgent(context: EditingAgentContext): string {
+  const ordered = getOrderedAssets(context)
+  if (ordered.length === 0) {
+    return '当前资源区没有素材。'
+  }
+
+  const counts = {
+    video: ordered.filter((asset) => asset.type === 'video').length,
+    image: ordered.filter((asset) => asset.type === 'image').length,
+    audio: ordered.filter((asset) => asset.type === 'audio').length,
+  }
+
+  const lines = [
+    `当前资源区共有 ${ordered.length} 个素材。视频 ${counts.video} 个，图片 ${counts.image} 个，音频 ${counts.audio} 个。`,
+    '素材列表：',
+    ...ordered.slice(0, 16).map((asset, index) => assetLabel(asset, index)),
+  ]
+  if (ordered.length > 16) {
+    lines.push(`还有 ${ordered.length - 16} 个素材未展开。`)
   }
   return lines.join('\n')
 }
@@ -151,9 +217,55 @@ function resolveClipReference(input: string, context: EditingAgentContext): Clip
   return null
 }
 
+function resolveAssetReference(input: string, context: EditingAgentContext): Asset | null {
+  const ordered = getOrderedAssets(context)
+  if (ordered.length === 0) return null
+
+  const typeFilter = /音频|音乐/.test(input)
+    ? 'audio'
+    : /图片|图像|照片/.test(input)
+      ? 'image'
+      : /视频/.test(input)
+        ? 'video'
+        : null
+
+  const filtered = typeFilter ? ordered.filter((asset) => asset.type === typeFilter) : ordered
+  if (filtered.length === 0) return null
+
+  const normalizedInput = normalizeText(input)
+  const exact = filtered.find((asset) => {
+    const name = normalizeText(assetDisplayName(asset))
+    const pathName = normalizeText(asset.path.split(/[/\\]/).pop() || '')
+    return normalizedInput === name || normalizedInput === pathName
+  })
+  if (exact) return exact
+
+  const fuzzy = filtered.find((asset) => {
+    const name = normalizeText(assetDisplayName(asset))
+    const pathName = normalizeText(asset.path.split(/[/\\]/).pop() || '')
+    return normalizedInput.length >= 2 && (name.includes(normalizedInput) || normalizedInput.includes(name) || pathName.includes(normalizedInput))
+  })
+  if (fuzzy) return fuzzy
+
+  if (/最后(一个)?(素材|视频|图片|音频)?/.test(input)) {
+    return filtered[filtered.length - 1]
+  }
+
+  const match = input.match(/第\s*([零一二两三四五六七八九十\d]+)\s*(个|段|张)?(素材|视频|图片|音频)?/)
+  const parsedIndex = parseNumberToken(match?.[1])
+  if (parsedIndex && parsedIndex >= 1 && parsedIndex <= filtered.length) {
+    return filtered[parsedIndex - 1]
+  }
+
+  if (typeFilter && filtered.length === 1) return filtered[0]
+  return null
+}
+
 function parseSeconds(input: string): number | null {
   const match = input.match(/(-?\d+(?:\.\d+)?)\s*秒/)
-  return match ? Number(match[1]) : null
+  if (match) return Number(match[1])
+  const shortMatch = input.match(/第?\s*(\d+(?:\.\d+)?)\s*s\b/i)
+  return shortMatch ? Number(shortMatch[1]) : null
 }
 
 function parseDurationInput(input: string): number | null {
@@ -171,6 +283,132 @@ function parseVolume(input: string): number | null {
   return match ? Math.max(0, Math.min(100, Number(match[1]))) / 100 : null
 }
 
+function parseTrackReference(input: string, context: EditingAgentContext): number | null {
+  const match = input.match(/\b([VA])\s*([1-9]\d*)\b/i)
+  if (!match) return null
+  const kind = match[1].toUpperCase() === 'A' ? 'audio' : 'video'
+  const ordinal = Number(match[2])
+  const matches = context.tracks
+    .map((track, index) => ({ track, index }))
+    .filter(({ track }) => (track.kind || 'video') === kind)
+  return matches[ordinal - 1]?.index ?? null
+}
+
+function parseTrimAmounts(input: string): { trimInSeconds?: number; trimOutSeconds?: number } | null {
+  const trimInMatch = input.match(/(?:开头|前面|头部|左侧)(?:裁掉|裁去|裁|剪掉|去掉)\s*(\d+(?:\.\d+)?)\s*秒/)
+  const trimOutMatch = input.match(/(?:结尾|后面|尾部|右侧)(?:裁掉|裁去|裁|剪掉|去掉)\s*(\d+(?:\.\d+)?)\s*秒/)
+  const trimInSeconds = Number(trimInMatch?.[1] || 0)
+  const trimOutSeconds = Number(trimOutMatch?.[1] || 0)
+  if (trimInSeconds <= 0 && trimOutSeconds <= 0) return null
+  return {
+    ...(trimInSeconds > 0 ? { trimInSeconds } : {}),
+    ...(trimOutSeconds > 0 ? { trimOutSeconds } : {}),
+  }
+}
+
+function parsePlacement(input: string, context: EditingAgentContext): PlacementResolution | null {
+  const trackIndex = parseTrackReference(input, context) ?? undefined
+  const clipReference = resolveClipReference(input, context)
+
+  if (clipReference && /(前面|之前|前\b)/.test(input) && !/往前|向前|前移/.test(input)) {
+    return { kind: 'before', clipId: clipReference.clipIds[0], trackIndex, text: clipReference.label }
+  }
+  if (clipReference && /(后面|之后|后\b)/.test(input) && !/往后|向后|后移/.test(input)) {
+    return { kind: 'after', clipId: clipReference.clipIds[0], trackIndex, text: clipReference.label }
+  }
+
+  const seconds = parseSeconds(input)
+  if (seconds !== null) {
+    return { kind: 'absolute', startTime: seconds, trackIndex, text: `${seconds}秒` }
+  }
+
+  return null
+}
+
+function mentionsPlacementIntent(input: string): boolean {
+  return /(添加|插入|放到|拖到|放入|加到|摆到|放在)/.test(input) && /(素材|视频|图片|音频|音乐)/.test(input)
+}
+
+export function buildPendingAgentIntent(input: string, context: EditingAgentContext): PendingAgentIntent | null {
+  if (!mentionsPlacementIntent(input)) return null
+  const asset = resolveAssetReference(input, context)
+  const placement = parsePlacement(input, context)
+  if (asset && placement) return null
+  return {
+    kind: 'place_asset',
+    assetId: asset?.id ?? null,
+    assetLabel: asset ? assetDisplayName(asset) : null,
+    positionText: placement?.text ?? null,
+  }
+}
+
+function isLikelyPlacementOnlyInput(input: string, context: EditingAgentContext): boolean {
+  return parsePlacement(input, context) !== null && !resolveAssetReference(input, context)
+}
+
+function isLikelyAssetOnlyInput(input: string, context: EditingAgentContext): boolean {
+  return resolveAssetReference(input, context) !== null && parsePlacement(input, context) === null && !mentionsPlacementIntent(input)
+}
+
+export function consumePendingAgentIntent(
+  input: string,
+  pending: PendingAgentIntent | null,
+  context: EditingAgentContext,
+): { input: string; pending: PendingAgentIntent | null; consumed: boolean } {
+  if (!pending || pending.kind !== 'place_asset') {
+    return { input, pending, consumed: false }
+  }
+
+  const asset = resolveAssetReference(input, context)
+  const placement = parsePlacement(input, context)
+
+  if (pending.assetLabel && isLikelyPlacementOnlyInput(input, context)) {
+    return {
+      input: `把${pending.assetLabel}放到${input}`,
+      pending: null,
+      consumed: true,
+    }
+  }
+
+  if (pending.positionText && asset && isLikelyAssetOnlyInput(input, context)) {
+    return {
+      input: `把${assetDisplayName(asset)}放到${pending.positionText}`,
+      pending: null,
+      consumed: true,
+    }
+  }
+
+  if (!pending.assetLabel && asset && !placement) {
+    return {
+      input,
+      pending: { ...pending, assetId: asset.id, assetLabel: assetDisplayName(asset) },
+      consumed: false,
+    }
+  }
+
+  if (!pending.positionText && placement && !asset) {
+    return {
+      input,
+      pending: { ...pending, positionText: placement.text },
+      consumed: false,
+    }
+  }
+
+  return { input, pending, consumed: false }
+}
+
+export function describePendingAgentIntent(intent: PendingAgentIntent): string {
+  if (intent.kind === 'place_asset') {
+    if (intent.assetLabel && !intent.positionText) {
+      return `已记住素材“${intent.assetLabel}”，请再说放到哪里，比如“最后一个片段后”或“5秒”。`
+    }
+    if (!intent.assetLabel && intent.positionText) {
+      return `已记住位置“${intent.positionText}”，请再说要放哪个素材。`
+    }
+  }
+  return '请继续补充你的操作。'
+}
+
 export function interpretEditingAgentInput(input: string, context: EditingAgentContext): EditingAgentResult {
   const trimmed = input.trim()
   if (!trimmed) {
@@ -183,6 +421,10 @@ export function interpretEditingAgentInput(input: string, context: EditingAgentC
 
   if (/列出片段|看看时间线|总结时间线|总结项目|当前时间线/.test(trimmed)) {
     return { reply: summarizeTimelineForAgent(context), actions: [], referencedClipIds: [] }
+  }
+
+  if (/列出素材|看看素材|资源区|素材列表|有哪些素材/.test(trimmed)) {
+    return { reply: summarizeAssetsForAgent(context), actions: [], referencedClipIds: [] }
   }
 
   const textMatch =
@@ -200,6 +442,32 @@ export function interpretEditingAgentInput(input: string, context: EditingAgentC
       reply: `准备在 ${startTime.toFixed(1)} 秒添加标题“${text}”。`,
       actions: [{ type: 'add_text', text, startTime, duration }],
       referencedClipIds: [],
+    }
+  }
+
+  if (mentionsPlacementIntent(trimmed) || /最后一个片段后|选中的片段后|当前片段后|最后一个片段前|选中的片段前|当前片段前/.test(trimmed)) {
+    const asset = resolveAssetReference(trimmed, context)
+    const placement = parsePlacement(trimmed, context)
+    if (asset && placement) {
+      if (placement.kind === 'absolute') {
+        return {
+          reply: `已准备把素材“${assetDisplayName(asset)}”放到时间线 ${placement.startTime.toFixed(1)} 秒处。`,
+          actions: [{ type: 'add_asset_to_timeline', assetId: asset.id, startTime: placement.startTime, ...(placement.trackIndex !== undefined ? { trackIndex: placement.trackIndex } : {}) }],
+          referencedClipIds: [],
+        }
+      }
+      if (placement.kind === 'after') {
+        return {
+          reply: `已准备把素材“${assetDisplayName(asset)}”放到目标片段后面。`,
+          actions: [{ type: 'insert_asset_after_clip', assetId: asset.id, clipId: placement.clipId, ...(placement.trackIndex !== undefined ? { trackIndex: placement.trackIndex } : {}) }],
+          referencedClipIds: [placement.clipId],
+        }
+      }
+      return {
+        reply: `已准备把素材“${assetDisplayName(asset)}”放到目标片段前面。`,
+        actions: [{ type: 'insert_asset_before_clip', assetId: asset.id, clipId: placement.clipId, ...(placement.trackIndex !== undefined ? { trackIndex: placement.trackIndex } : {}) }],
+        referencedClipIds: [placement.clipId],
+      }
     }
   }
 
@@ -241,6 +509,15 @@ export function interpretEditingAgentInput(input: string, context: EditingAgentC
     return {
       reply: `已准备在 ${splitTime.toFixed(1)} 秒切开${reference.label}。`,
       actions: [{ type: 'split_clip', clipId: reference.clipIds[0], time: splitTime }],
+      referencedClipIds: reference.clipIds,
+    }
+  }
+
+  const trimAmounts = parseTrimAmounts(trimmed)
+  if (trimAmounts) {
+    return {
+      reply: `已准备裁切${reference.label}。`,
+      actions: [{ type: 'trim_clip', clipIds: reference.clipIds, ...trimAmounts }],
       referencedClipIds: reference.clipIds,
     }
   }
@@ -356,6 +633,113 @@ function createTextClip(text: string, startTime: number, duration: number, track
   })
 }
 
+function buildTimelineClipsFromAsset(
+  asset: Asset,
+  context: EditingAgentContext,
+  startTime: number,
+  preferredTrackIndex?: number,
+): TimelineClip[] {
+  const isAdjustment = asset.type === 'adjustment'
+  const isVideoAsset = asset.type === 'video'
+  const isAudioAsset = asset.type === 'audio'
+  const isImageAsset = asset.type === 'image'
+
+  const targetTrackIndex = preferredTrackIndex ?? (
+    isAudioAsset
+      ? context.tracks.findIndex((track) => track.kind === 'audio' && !track.locked)
+      : context.tracks.findIndex((track) => (track.kind || 'video') === 'video' && !track.locked)
+  )
+  if (targetTrackIndex < 0) return []
+
+  const targetTrack = context.tracks[targetTrackIndex]
+  if (!targetTrack || targetTrack.locked) return []
+
+  const videoPatched = targetTrack.sourcePatched !== false
+  if (isAudioAsset && !videoPatched) return []
+
+  const createVideoClip = (isVideoAsset || isImageAsset || isAdjustment) && videoPatched
+  const needsAudioClip = isVideoAsset && !isAdjustment
+  const audioTrackIndex = needsAudioClip
+    ? context.tracks.findIndex((track) => track.kind === 'audio' && !track.locked && track.sourcePatched !== false)
+    : -1
+  const createAudioClip = needsAudioClip && audioTrackIndex >= 0
+
+  if (!createVideoClip && !createAudioClip && !isAudioAsset) return []
+
+  const clipDuration = asset.duration || (isAdjustment ? 10 : 5)
+  const clipStartTime = Math.max(0, startTime)
+  const videoClipId = `clip-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  const audioClipId = `clip-${Date.now()}-a-${Math.random().toString(36).slice(2, 9)}`
+  const newClips: TimelineClip[] = []
+
+  if (createVideoClip || isAudioAsset) {
+    newClips.push(migrateClip({
+      id: isAudioAsset ? audioClipId : videoClipId,
+      assetId: asset.id,
+      type: isAdjustment ? 'adjustment' : isVideoAsset ? 'video' : isAudioAsset ? 'audio' : 'image',
+      startTime: clipStartTime,
+      duration: clipDuration,
+      trimStart: 0,
+      trimEnd: 0,
+      speed: 1,
+      reversed: false,
+      muted: false,
+      volume: 1,
+      trackIndex: targetTrackIndex,
+      asset,
+      flipH: false,
+      flipV: false,
+      transitionIn: { type: 'none', duration: isAdjustment ? 0 : 0.5 },
+      transitionOut: { type: 'none', duration: isAdjustment ? 0 : 0.5 },
+      colorCorrection: { ...DEFAULT_COLOR_CORRECTION },
+      opacity: 100,
+      ...(createAudioClip ? { linkedClipIds: [audioClipId] } : {}),
+    }))
+  }
+
+  if (createAudioClip) {
+    newClips.push(migrateClip({
+      id: audioClipId,
+      assetId: asset.id,
+      type: 'audio',
+      startTime: clipStartTime,
+      duration: clipDuration,
+      trimStart: 0,
+      trimEnd: 0,
+      speed: 1,
+      reversed: false,
+      muted: false,
+      volume: 1,
+      trackIndex: audioTrackIndex,
+      asset,
+      flipH: false,
+      flipV: false,
+      transitionIn: { type: 'none', duration: 0.5 },
+      transitionOut: { type: 'none', duration: 0.5 },
+      colorCorrection: { ...DEFAULT_COLOR_CORRECTION },
+      opacity: 100,
+      linkedClipIds: [videoClipId],
+    }))
+  }
+
+  return newClips
+}
+
+function insertAssetRelativeToClip(
+  clips: TimelineClip[],
+  context: EditingAgentContext,
+  assetId: string,
+  clipId: string,
+  mode: 'before' | 'after',
+  preferredTrackIndex?: number,
+): TimelineClip[] {
+  const asset = context.assets.find((item) => item.id === assetId)
+  const targetClip = clips.find((item) => item.id === clipId)
+  if (!asset || !targetClip) return []
+  const startTime = mode === 'after' ? targetClip.startTime + targetClip.duration : targetClip.startTime
+  return buildTimelineClipsFromAsset(asset, context, startTime, preferredTrackIndex ?? targetClip.trackIndex)
+}
+
 export function applyEditingAgentActions(
   context: EditingAgentContext,
   actions: EditingAgentAction[],
@@ -410,6 +794,46 @@ export function applyEditingAgentActions(
         summaries.push(`复制了 ${duplicates.length} 个片段。`)
         break
       }
+      case 'add_asset_to_timeline': {
+        const asset = context.assets.find((item) => item.id === action.assetId)
+        if (!asset) break
+        const newClips = buildTimelineClipsFromAsset(asset, context, action.startTime ?? context.currentTime, action.trackIndex)
+        if (newClips.length === 0) {
+          summaries.push(`素材“${assetDisplayName(asset)}”没有可用轨道，已跳过。`)
+          break
+        }
+        const newIds = new Set(newClips.map((clip) => clip.id))
+        clips = resolveOverlaps([...clips, ...newClips], newIds)
+        selectedClipIds = new Set(newClips.map((clip) => clip.id))
+        summaries.push(`已把素材“${assetDisplayName(asset)}”放入时间线。`)
+        break
+      }
+      case 'insert_asset_after_clip': {
+        const asset = context.assets.find((item) => item.id === action.assetId)
+        const newClips = insertAssetRelativeToClip(clips, context, action.assetId, action.clipId, 'after', action.trackIndex)
+        if (!asset || newClips.length === 0) {
+          summaries.push('未能把素材插入到目标片段后。')
+          break
+        }
+        const newIds = new Set(newClips.map((clip) => clip.id))
+        clips = resolveOverlaps([...clips, ...newClips], newIds)
+        selectedClipIds = new Set(newClips.map((clip) => clip.id))
+        summaries.push(`已把素材“${assetDisplayName(asset)}”插到目标片段后面。`)
+        break
+      }
+      case 'insert_asset_before_clip': {
+        const asset = context.assets.find((item) => item.id === action.assetId)
+        const newClips = insertAssetRelativeToClip(clips, context, action.assetId, action.clipId, 'before', action.trackIndex)
+        if (!asset || newClips.length === 0) {
+          summaries.push('未能把素材插入到目标片段前。')
+          break
+        }
+        const newIds = new Set(newClips.map((clip) => clip.id))
+        clips = resolveOverlaps([...clips, ...newClips], newIds)
+        selectedClipIds = new Set(newClips.map((clip) => clip.id))
+        summaries.push(`已把素材“${assetDisplayName(asset)}”插到目标片段前面。`)
+        break
+      }
       case 'set_duration': {
         const ids = new Set(action.clipIds)
         clips = clips.map((clip) => ids.has(clip.id) ? { ...clip, duration: Math.max(0.2, action.duration) } : clip)
@@ -455,6 +879,28 @@ export function applyEditingAgentActions(
             : { ...clip, transitionOut: transition }
         })
         summaries.push(action.enabled ? '已更新转场。' : '已移除转场。')
+        break
+      }
+      case 'trim_clip': {
+        const ids = new Set(action.clipIds)
+        clips = clips.map((clip) => {
+          if (!ids.has(clip.id)) return clip
+          const trimIn = Math.max(0, action.trimInSeconds ?? 0)
+          const trimOut = Math.max(0, action.trimOutSeconds ?? 0)
+          if (trimIn <= 0 && trimOut <= 0) return clip
+          const maxTrimIn = Math.max(0, clip.duration - trimOut - 0.2)
+          const appliedTrimIn = Math.min(trimIn, maxTrimIn)
+          const maxTrimOut = Math.max(0, clip.duration - appliedTrimIn - 0.2)
+          const appliedTrimOut = Math.min(trimOut, maxTrimOut)
+          return {
+            ...clip,
+            startTime: clip.startTime + appliedTrimIn,
+            duration: Math.max(0.2, clip.duration - appliedTrimIn - appliedTrimOut),
+            trimStart: clip.trimStart + appliedTrimIn * clip.speed,
+            trimEnd: clip.trimEnd + appliedTrimOut * clip.speed,
+          }
+        })
+        summaries.push('已裁切目标片段。')
         break
       }
       case 'split_clip': {

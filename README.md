@@ -1,202 +1,240 @@
-# LTX Desktop
+# 剪艾 JianAI
 
-LTX Desktop is an open-source desktop app for generating videos with LTX models — locally on supported Windows/Linux NVIDIA GPUs, with an API mode for unsupported hardware and macOS.
+剪艾 JianAI 是一个面向桌面端的 AI 剪辑项目。当前阶段的核心目标不是“文生视频”，而是让用户通过自然语言直接修改时间线，实现更高效的素材编排、片段移动、裁剪、转场和标题编辑。
 
-> **Status: Beta.** Expect breaking changes.
-> Frontend architecture is under active refactor; large UI PRs may be declined for now (see [`CONTRIBUTING.md`](docs/CONTRIBUTING.md)).
+现阶段我们把产品重点收敛在：
+
+- AI 对话式剪辑
+- 时间线 JSON 状态驱动
+- 本地桌面编辑器体验
+- 可持续扩展的 Agent 执行框架
+
+图像生成、视频生成这类能力暂时不作为当前主线功能，后续会在开发计划中逐步恢复。
+
+> **当前定位**
+> 剪艾不是一个“先生成、后编辑”的演示壳子，而是一个“AI 直接参与剪辑”的桌面编辑器原型。
 
 <p align="center">
-  <img src="images/gen-space.png" alt="Gen Space" width="70%">
+  <img src="images/video-editor.png" alt="JianAI Video Editor" width="78%">
 </p>
 
 <p align="center">
-  <img src="images/video-editor.png" alt="Video Editor" width="70%">
+  <img src="images/timeline-gap-fill.png" alt="JianAI Timeline" width="78%">
 </p>
 
-<p align="center">
-  <img src="images/timeline-gap-fill.png" alt="Timeline gap fill" width="70%">
-</p>
+## 当前亮点
 
-## Features
+### 1. AI 对话式剪辑
 
-- Text-to-video generation
-- Image-to-video generation
-- Audio-to-video generation
-- Video edit generation (Retake)
-- Video Editor Interface
-- Video Editing Projects
+右侧 `Timeline Agent` 可以读取当前时间线状态，把自然语言转换成结构化编辑动作，再真正修改剪辑数据，而不是只返回建议文本。
 
-## Local vs API mode
+当前已经支持的典型操作包括：
 
-| Platform / hardware | Generation mode | Notes |
-| --- | --- | --- |
-| Windows + CUDA GPU with **≥32GB VRAM** | Local generation | Downloads model weights locally |
-| Windows (no CUDA, <32GB VRAM, or unknown VRAM) | API-only | **LTX API key required** |
-| Linux + CUDA GPU with **≥32GB VRAM** | Local generation | Downloads model weights locally |
-| Linux (no CUDA, <32GB VRAM, or unknown VRAM) | API-only | **LTX API key required** |
-| macOS (Apple Silicon builds) | API-only | **LTX API key required** |
+- 选中指定片段
+- 将片段前移 / 后移
+- 调整时长
+- 修改速度
+- 添加淡入 / 淡出
+- 删除片段
+- 复制片段
+- 添加标题
 
-In API-only mode, available resolutions/durations may be limited to what the API supports.
+### 2. 时间线由结构化状态驱动
 
-## System requirements
+项目内部不是“脚本胡乱点 UI”，而是通过时间线数据模型驱动界面变化。也就是说：
 
-### Windows (local generation)
+- AI 先生成 `actions`
+- 执行器应用到时间线状态
+- React UI 自动刷新
 
-- Windows 10/11 (x64)
-- NVIDIA GPU with CUDA support and **≥32GB VRAM** (more is better)
-- 16GB+ RAM (32GB recommended)
-- **160GB+ free disk space** (for model weights, Python environment, and outputs)
+这种方式更适合做：
 
-### Linux (local generation)
+- 可回放的编辑记录
+- 可调试的执行日志
+- 未来的撤销 / 重做 / patch 预览
+- 更稳定的 Agent 自动化剪辑
 
-- Ubuntu 22.04+ or similar distro (x64 or arm64)
-- NVIDIA GPU with CUDA support and **≥32GB VRAM** (more is better)
-- NVIDIA driver installed (PyTorch bundles the CUDA runtime)
-- 16GB+ RAM (32GB recommended)
-- Plenty of free disk space for model weights and outputs
+### 3. 已接入真实 AI 推理链路
 
-### macOS (API-only)
+当前 Agent 已支持接 OpenAI-compatible 接口，把模型返回约束成结构化 JSON，再落到本地时间线执行器。
 
-- Apple Silicon (arm64)
-- macOS 13+ (Ventura)
-- Stable internet connection
+### 4. 已内置调试链路
 
-## Install
+为了排查“AI 有回复但时间线没变化”这类问题，项目里已经补了调试版能力：
 
-1. Download the latest installer from GitHub Releases: [Releases](../../releases)
-2. Install and launch **LTX Desktop**
-3. Complete first-run setup
+- Agent 面板内调试日志
+- Renderer 控制台日志
+- 持久化 `jsonl` 调试日志
 
-## First run & data locations
+这对后续继续做 Agent 稳定性和可解释性很关键。
 
-LTX Desktop stores app data (settings, models, logs) in:
+## 当前暂不主推的能力
 
-- **Windows:** `%LOCALAPPDATA%\LTXDesktop\`
-- **macOS:** `~/Library/Application Support/LTXDesktop/`
-- **Linux:** `$XDG_DATA_HOME/LTXDesktop/` (default: `~/.local/share/LTXDesktop/`)
+下面这些功能目前不是本项目的主线卖点，部分能力会被弱化、关闭，或者放到后续开发计划：
 
-Model weights are downloaded into the `models/` subfolder (this can be large and may take time).
+- 文生视频
+- 图生视频
+- 音频生视频
+- 图像生成
+- 重生成 / Retake
+- 本地大模型推理工作流
 
-On first launch you may be prompted to review/accept model license terms (license text is fetched from Hugging Face; requires internet).
+原因很直接：当前产品最有差异化的地方不是“又一个生成器”，而是“AI 真正参与剪辑操作”。
 
-Text encoding: to generate videos you must configure text encoding:
+## 适合谁
 
-- **LTX API key** (cloud text encoding) — **text encoding via the API is completely FREE** and highly recommended to speed up inference and save memory. Generate a free API key at the [LTX Console](https://console.ltx.video/). [Read more](https://ltx.io/model/model-blog/ltx-2-better-control-for-real-workflows).
-- **Local Text Encoder** (extra download; enables fully-local operation on supported Windows hardware) — if you don't wish to generate an API key, you can encode text locally via the settings menu.
+剪艾当前更适合以下几类用户：
 
-## API keys, cost, and privacy
+- 想验证 AI 剪辑交互形态的产品团队
+- 需要做时间线 Agent 的开发者
+- 想把自然语言命令接入剪辑器的技术团队
+- 需要桌面端原型，而不是纯 Web demo 的团队
 
-### LTX API key
+## 当前项目状态
 
-The LTX API is used for:
+### 已可用
 
-- **Cloud text encoding and prompt enhancement** — **FREE**; text encoding is highly recommended to speed up inference and save memory
-- API-based video generations (required on macOS and on unsupported Windows hardware) — paid
-- Retake — paid
+- 桌面端视频编辑器界面
+- 多轨时间线基础编辑
+- AI 对话面板
+- 结构化 Agent action 执行
+- 调试日志查看
+- 无本地 Python 首启下载的桌面壳构建
 
-An LTX API key is required in API-only mode, but optional on Windows/Linux local mode if you enable the Local Text Encoder.
+### 正在完善
 
-Generate a FREE API key at the [LTX Console](https://console.ltx.video/). Text encoding is free; video generation API usage is paid. [Read more](https://ltx.io/model/model-blog/ltx-2-better-control-for-real-workflows).
+- 品牌替换与中文化
+- Agent 指令覆盖面
+- 更可靠的多轮上下文理解
+- 更清晰的执行反馈
 
-When you use API-backed features, prompts and media inputs are sent to the API service. Your API key is stored locally in your app data folder — treat it like a secret.
+### 暂未完成
 
-### fal API key (optional)
+- 完整的安装器发布链
+- 完整的前端测试体系
+- 面向最终用户的产品化打磨
 
-Used for Z Image Turbo text-to-image generation in API mode. When enabled, image generation requests are sent to fal.ai.
+## 开发路线图
 
-Create an API key in the [fal dashboard](https://fal.ai/dashboard/keys).
+### 近期
 
-### Gemini API key (optional)
+- 继续强化 AI 剪辑命令覆盖率
+- 增加更明确的执行预览与变更说明
+- 支持更稳定的片段引用和多轮对话
+- 提升日志可读性和错误定位效率
 
-Used for AI prompt suggestions. When enabled, prompt context and frames may be sent to Google Gemini.
+### 中期
 
-## Architecture
+- 支持字幕、轨道、批量操作
+- 支持“先预览 patch，再确认执行”
+- 支持更强的撤销 / 重做整合
+- 优化品牌、界面和交互一致性
 
-LTX Desktop is split into three main layers:
+### 后期
 
-- **Renderer (`frontend/`)**: TypeScript + React UI.
-  - Calls the local backend over HTTP at `http://localhost:8000`.
-  - Talks to Electron via the preload bridge (`window.electronAPI`).
-- **Electron (`electron/`)**: TypeScript main process + preload.
-  - Owns app lifecycle and OS integration (file dialogs, native export via ffmpeg, starting/managing the Python backend).
-  - Security: renderer is sandboxed (`contextIsolation: true`, `nodeIntegration: false`).
-- **Backend (`backend/`)**: Python + FastAPI local server.
-  - Orchestrates generation, model downloads, and GPU execution.
-  - Calls external APIs only when API-backed features are used.
+- 重新开放图像生成与视频生成能力
+- 统一生成与剪辑工作流
+- 形成 AI 生成 + AI 剪辑 + 手动编辑的一体化产品
+
+## 技术架构
+
+项目仍然保留三层结构：
+
+- `frontend/`：React + TypeScript 编辑器界面
+- `electron/`：Electron 主进程、IPC、文件系统与打包能力
+- `backend/`：Python / FastAPI 能力层
+
+但当前产品方向上，最核心的是前端时间线编辑器和 Agent 执行链路。
 
 ```mermaid
 graph TD
-  UI["Renderer (React + TS)"] -->|HTTP: localhost:8000| BE["Backend (FastAPI + Python)"]
-  UI -->|IPC via preload: window.electronAPI| EL["Electron main (TS)"]
-  EL --> OS["OS integration (files, dialogs, ffmpeg, process mgmt)"]
-  BE --> GPU["Local models + GPU (when supported)"]
-  BE --> EXT["External APIs (only for API-backed features)"]
-  EL --> DATA["App data folder (settings/models/logs)"]
-  BE --> DATA
+  U["用户自然语言指令"] --> A["Timeline Agent"]
+  A --> J["结构化 actions / JSON"]
+  J --> E["时间线执行器"]
+  E --> S["项目状态 / Timeline State"]
+  S --> UI["编辑器界面刷新"]
+  E --> L["调试日志 / 执行日志"]
 ```
 
-## Development (quickstart)
+## 运行与开发
 
-Prereqs:
+### 环境要求
 
 - Node.js
-- `uv` (Python package manager)
-- Python 3.12+
+- pnpm
+- `uv`
 - Git
 
-Setup:
+### 安装依赖
 
 ```bash
-pnpm setup:dev
+pnpm install
 ```
 
-Run:
+### 开发模式
 
 ```bash
 pnpm dev
 ```
 
-Debug:
+### 调试模式
 
 ```bash
 pnpm dev:debug
 ```
 
-`dev:debug` starts Electron with inspector enabled and starts the Python backend with `debugpy`.
-
-Typecheck:
+### 类型检查
 
 ```bash
 pnpm typecheck
 ```
 
-Backend tests:
+### 后端测试
 
 ```bash
 pnpm backend:test
 ```
 
-Building installers:
-- See [`INSTALLER.md`](docs/INSTALLER.md)
+## 桌面构建
 
-## Telemetry
+如果你只想构建桌面壳，不希望首启下载本地 Python 环境，可以使用当前项目里的“禁用本地后端”方案。
 
-LTX Desktop collects minimal, anonymous usage analytics (app version, platform, and a random installation ID) to help prioritize development. No personal information or generated content is collected. Analytics is enabled by default and can be disabled in **Settings > General > Anonymous Analytics**. See [`TELEMETRY.md`](docs/TELEMETRY.md) for details.
+编译产物默认不会进入 Git：
 
-## Docs
+- `dist/`
+- `dist-electron/`
+- `release/`
 
-- [`INSTALLER.md`](docs/INSTALLER.md) — building installers
-- [`TELEMETRY.md`](docs/TELEMETRY.md) — telemetry and privacy
-- [`backend/architecture.md`](backend/architecture.md) — backend architecture
+## 数据与日志
 
-## Contributing
+应用数据默认保存在：
 
-See [`CONTRIBUTING.md`](docs/CONTRIBUTING.md).
+- Windows：`%LOCALAPPDATA%\JianAI\`
+- macOS：`~/Library/Application Support/JianAI/`
+- Linux：`$XDG_DATA_HOME/JianAI/`
+
+日志会写入应用数据目录下的日志文件夹。
+
+## 文档
+
+- [docs/INSTALLER.md](docs/INSTALLER.md)：安装包构建
+- [docs/TELEMETRY.md](docs/TELEMETRY.md)：匿名统计说明
+- [backend/architecture.md](backend/architecture.md)：后端架构
+
+## 开源说明
+
+本仓库当前是基于现有桌面视频生成项目的二次开发版本，已经开始转向“AI 剪辑”主线。
+
+因此你会在部分代码和底层依赖中继续看到：
+
+- `LTX`
+- `LTX API`
+- `LTX-2`
+
+这些名称目前主要代表底层模型或既有依赖，不等于当前产品品牌。
 
 ## License
 
-Apache-2.0 — see [`LICENSE.txt`](LICENSE.txt).
+Apache-2.0，见 [LICENSE.txt](LICENSE.txt)。
 
-Third-party notices (including model licenses/terms): [`NOTICES.md`](NOTICES.md).
-
-Model weights are downloaded separately and may be governed by additional licenses/terms.
+第三方依赖与模型相关条款见 [NOTICES.md](NOTICES.md)。

@@ -26,6 +26,7 @@ function AppContent() {
   const { settings, saveLtxApiKey, saveFalApiKey, forceApiGenerations, isLoaded, runtimePolicyLoaded } = useAppSettings()
 
   const [localBackendDisabled, setLocalBackendDisabled] = useState(false)
+  const [appInfoLoaded, setAppInfoLoaded] = useState(false)
   const [pythonReady, setPythonReady] = useState<boolean | null>(null)
   const [backendStarted, setBackendStarted] = useState(false)
   const [setupState, setSetupState] = useState<SetupState>('loading')
@@ -64,6 +65,8 @@ function AppContent() {
         }
       } catch (e) {
         logger.error(`Failed to load app info: ${e}`)
+      } finally {
+        setAppInfoLoaded(true)
       }
     }
     void loadAppInfo()
@@ -184,7 +187,7 @@ function AppContent() {
     async (apiKey: string) => {
       const trimmed = apiKey.trim()
       if (!trimmed) {
-        throw new Error('Please enter a valid LTX API key.')
+        throw new Error('Please enter a valid API key.')
       }
 
       await saveLtxApiKey(trimmed)
@@ -315,15 +318,15 @@ function AppContent() {
     const sections: ApiGatewaySection[] = [
       {
         keyType: 'ltx',
-        title: 'LTX API',
+        title: 'JianAI API',
         description: 'Video generation, prompt enhancement, and cloud text encoding.',
         required: apiGatewayRequest.requiredKeys.includes('ltx'),
         isConfigured: settings.hasLtxApiKey,
-        inputLabel: 'LTX API key',
-        placeholder: 'Enter your LTX API key...',
+        inputLabel: 'API key',
+        placeholder: 'Enter your API key...',
         onSave: handleSaveLtxKey,
         onGetKey: () => window.electronAPI.openLtxApiKeyPage(),
-        getKeyLabel: 'Get LTX API key',
+        getKeyLabel: 'Get API key',
       },
       {
         keyType: 'fal',
@@ -354,7 +357,7 @@ function AppContent() {
     settings.hasLtxApiKey,
   ])
 
-  if (pythonReady === null) {
+  if (!appInfoLoaded || pythonReady === null) {
     return (
       <div className="h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -400,7 +403,7 @@ function AppContent() {
         <div className="h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Starting LTX Desktop...</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Starting JianAI...</h2>
             <p className="text-muted-foreground">Initializing the inference engine</p>
           </div>
         </div>

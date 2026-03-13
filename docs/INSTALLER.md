@@ -1,6 +1,6 @@
-# LTX Desktop - Installer Build Guide
+# 剪艾 JianAI - Installer Build Guide
 
-This guide explains how to build a distributable installer for **LTX Desktop**.
+This guide explains how to build a distributable installer for **剪艾 JianAI**.
 
 - For running from source and debugging: see [`README.md`](../README.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - For end-user requirements and first-run behavior: see [`README.md`](../README.md).
@@ -82,22 +82,22 @@ The underlying `local-build.sh` / `local-build.ps1` scripts also accept:
 ### macOS
 ```
 release/
-  └── LTX Desktop-<version>-arm64.dmg
+  └── 剪艾 JianAI-<version>-arm64.dmg
 ```
 
 ### Linux
 ```
 release/
-  ├── LTX Desktop-x86_64.AppImage
-  ├── LTX Desktop-amd64.deb
-  ├── LTX Desktop-arm64.AppImage
-  └── LTX Desktop-arm64.deb
+  ├── 剪艾 JianAI-x86_64.AppImage
+  ├── 剪艾 JianAI-amd64.deb
+  ├── 剪艾 JianAI-arm64.AppImage
+  └── 剪艾 JianAI-arm64.deb
 ```
 
 ### Windows
 ```
 release/
-  └── LTX Desktop-<version>-Setup.exe
+  └── 剪艾 JianAI-<version>-Setup.exe
 ```
 
 ## Application Icon
@@ -117,7 +117,7 @@ The build doesn't require a GPU. CUDA packages are pre-built binaries.
 ### macOS: "App is damaged" or Gatekeeper warning
 On unsigned builds, macOS Gatekeeper may block the app. Right-click the app and select "Open", or run:
 ```bash
-xattr -dr com.apple.quarantine /Applications/LTX\ Desktop.app
+xattr -dr com.apple.quarantine /Applications/剪艾\ JianAI.app
 ```
 
 ### Installer is too large
