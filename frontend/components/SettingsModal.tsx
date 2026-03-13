@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Download, Film, Folder, Info, KeyRound, Settings, Sliders, Sparkles, X, Zap } from 'lucide-react'
+import { AlertCircle, Bot, Check, Download, Film, Folder, Info, KeyRound, Settings, Sliders, Sparkles, X, Zap } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { Button } from './ui/button'
 import { useAppSettings, type AppSettings } from '../contexts/AppSettingsContext'
@@ -18,7 +18,7 @@ interface SettingsModalProps {
   initialTab?: TabId
 }
 
-type TabId = 'general' | 'apiKeys' | 'inference' | 'promptEnhancer' | 'about'
+type TabId = 'general' | 'apiKeys' | 'agent' | 'inference' | 'promptEnhancer' | 'about'
 
 export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProps) {
   const { settings, updateSettings, saveLtxApiKey, saveCloudflareImageCredentials, saveGeminiApiKey, forceApiGenerations } = useAppSettings()
@@ -206,6 +206,16 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
     })
   }
 
+  const handleEditingAgentLlmChange = (patch: Partial<AppSettings['editingAgentLlm']>) => {
+    onSettingsChange({
+      ...settings,
+      editingAgentLlm: {
+        ...settings.editingAgentLlm,
+        ...patch,
+      },
+    })
+  }
+
   // Prompt Enhancer handlers
   const handleTogglePromptEnhancer = (mode: 't2v' | 'i2v') => {
     if (mode === 't2v') {
@@ -273,6 +283,7 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
   const tabs = [
     { id: 'general' as TabId, label: '通用', icon: Settings },
     { id: 'apiKeys' as TabId, label: 'API 密钥', icon: KeyRound },
+    { id: 'agent' as TabId, label: 'Agent', icon: Bot },
     { id: 'inference' as TabId, label: '推理', icon: Sliders },
     { id: 'promptEnhancer' as TabId, label: '提示词增强', icon: Sparkles },
     { id: 'about' as TabId, label: '关于', icon: Info },
@@ -1054,6 +1065,75 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                   <span className="text-blue-400 font-medium">Tip:</span> Lower steps = faster but lower quality.
                   Higher steps = better quality but slower.
                 </p>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'agent' && (
+            <>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-blue-400" />
+                  <h3 className="text-sm font-semibold text-white">时间线 Agent</h3>
+                </div>
+
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  配置视频编辑页右侧智能助理调用的模型服务。这些设置会持久化到用户数据目录，不会因为重新打包而丢失。
+                </p>
+
+                <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4 border border-zinc-700/50">
+                  <label className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm text-white">启用真实 AI</div>
+                      <p className="text-xs text-zinc-500">关闭后使用本地规则引擎，不调用外部 LLM。</p>
+                    </div>
+                    <button
+                      onClick={() => handleEditingAgentLlmChange({ enabled: !settings.editingAgentLlm.enabled })}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                        settings.editingAgentLlm.enabled ? 'bg-blue-500' : 'bg-zinc-700'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                          settings.editingAgentLlm.enabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </label>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs text-zinc-400">Base URL</label>
+                    <input
+                      type="text"
+                      value={settings.editingAgentLlm.baseUrl}
+                      onChange={(e) => handleEditingAgentLlmChange({ baseUrl: e.target.value })}
+                      placeholder="http://127.0.0.1:55555"
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs text-zinc-400">Model</label>
+                    <input
+                      type="text"
+                      value={settings.editingAgentLlm.model}
+                      onChange={(e) => handleEditingAgentLlmChange({ model: e.target.value })}
+                      placeholder="deepseek-chat"
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs text-zinc-400">API Key</label>
+                    <input
+                      type="password"
+                      value={settings.editingAgentLlm.apiKey}
+                      onChange={(e) => handleEditingAgentLlmChange({ apiKey: e.target.value })}
+                      placeholder="sk-..."
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
               </div>
             </>
           )}

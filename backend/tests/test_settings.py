@@ -32,6 +32,12 @@ class TestGetSettings:
         assert data["seedLocked"] is False
         assert data["lockedSeed"] == 42
         assert data["modelsDir"] == ""
+        assert data["editingAgentLlm"] == {
+            "enabled": True,
+            "baseUrl": "http://127.0.0.1:55555",
+            "apiKey": "sk-any",
+            "model": "deepseek-chat",
+        }
         assert "ltxApiKey" not in data
         assert "falApiKey" not in data
         assert "geminiApiKey" not in data
@@ -122,6 +128,24 @@ class TestPostSettings:
         r = client.post("/api/settings", json={"userPrefersLtxApiVideoGenerations": True})
         assert r.status_code == 200
         assert test_state.state.app_settings.user_prefers_ltx_api_video_generations is True
+
+    def test_update_editing_agent_llm(self, client, test_state):
+        r = client.post(
+            "/api/settings",
+            json={
+                "editingAgentLlm": {
+                    "enabled": False,
+                    "baseUrl": "https://example.com",
+                    "apiKey": "agent-key",
+                    "model": "gpt-4.1-mini",
+                }
+            },
+        )
+        assert r.status_code == 200
+        assert test_state.state.app_settings.editing_agent_llm.enabled is False
+        assert test_state.state.app_settings.editing_agent_llm.base_url == "https://example.com"
+        assert test_state.state.app_settings.editing_agent_llm.api_key == "agent-key"
+        assert test_state.state.app_settings.editing_agent_llm.model == "gpt-4.1-mini"
 
     def test_empty_string_does_not_erase_key(self, client, test_state):
         test_state.state.app_settings.ltx_api_key = "real-key"
@@ -266,6 +290,17 @@ class TestSettingsPersistence:
 
         loaded = self._new_state(test_state, default_app_settings)
         assert loaded.state.app_settings.user_prefers_ltx_api_video_generations is True
+
+    def test_editing_agent_llm_persists(self, client, test_state, default_app_settings):
+        r = client.post(
+            "/api/settings",
+            json={"editingAgentLlm": {"baseUrl": "https://llm.local", "model": "qwen-max"}},
+        )
+        assert r.status_code == 200
+
+        loaded = self._new_state(test_state, default_app_settings)
+        assert loaded.state.app_settings.editing_agent_llm.base_url == "https://llm.local"
+        assert loaded.state.app_settings.editing_agent_llm.model == "qwen-max"
 
 
 class TestSettingsSchemaDrift:

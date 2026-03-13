@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Folder, MoreVertical, Trash2, Pencil, Sparkles } from 'lucide-react'
+import { Plus, Folder, MoreVertical, Trash2, Pencil, Sparkles, KeyRound } from 'lucide-react'
 import { useProjects } from '../contexts/ProjectContext'
 import { LtxLogo } from '../components/LtxLogo'
 import { Button } from '../components/ui/button'
@@ -191,7 +191,18 @@ export function Home() {
       </aside>
       
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="relative flex-1 overflow-auto">
+        <div className="absolute right-6 top-6 z-20">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-settings', { detail: { tab: 'apiKeys' } }))}
+            className="inline-flex items-center gap-2 rounded-md border border-zinc-700/80 bg-zinc-950/85 px-3 py-2 text-sm text-zinc-200 shadow-lg backdrop-blur transition-colors hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+            title="打开 API 密钥和 Agent 设置"
+          >
+            <KeyRound className="h-4 w-4" />
+            <span>API 设置</span>
+          </button>
+        </div>
+
         {/* Header Banner with video background */}
         <div className="relative h-72 overflow-hidden">
           <video

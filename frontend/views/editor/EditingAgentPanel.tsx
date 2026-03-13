@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { ChevronDown, ChevronUp, FolderOpen, Loader2, MessageSquare, Send, Settings2, Sparkles, X } from 'lucide-react'
 import type { Asset, TimelineClip, Track } from '../../types/project'
+import { useAppSettings } from '../../contexts/AppSettingsContext'
 import {
   applyEditingAgentActions,
   assetDisplayName,
@@ -66,8 +67,6 @@ interface EditingAgentPanelProps {
   setSelectedClipIds: Dispatch<SetStateAction<Set<string>>>
 }
 
-const EDITING_AGENT_LLM_STORAGE_KEY = 'ltx-editing-agent-llm-config'
-
 const QUICK_PROMPTS = [
   '列出片段',
   '列出素材',
@@ -93,6 +92,7 @@ export function EditingAgentPanel({
   setClips,
   setSelectedClipIds,
 }: EditingAgentPanelProps) {
+  const { settings, updateSettings } = useAppSettings()
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const initialSummary = useMemo(
     () => `${summarizeTimelineForAgent({ assets, visibleAssets, clips, tracks, selectedClipIds, currentTime })}\n\n${summarizeAssetsForAgent({ assets, visibleAssets, clips, tracks, selectedClipIds, currentTime })}`,
@@ -116,28 +116,14 @@ export function EditingAgentPanel({
   const [debugEntries, setDebugEntries] = useState<EditingAgentDebugEntry[]>([])
   const [textContextMenu, setTextContextMenu] = useState<TextContextMenuState | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
-  const [llmConfig, setLlmConfig] = useState<EditingAgentLlmConfig>(() => {
-    if (typeof window === 'undefined') {
-      return DEFAULT_EDITING_AGENT_LLM_CONFIG
-    }
-    try {
-      const raw = window.localStorage.getItem(EDITING_AGENT_LLM_STORAGE_KEY)
-      if (!raw) return DEFAULT_EDITING_AGENT_LLM_CONFIG
-      const parsed = JSON.parse(raw) as Partial<EditingAgentLlmConfig>
-      return {
-        enabled: parsed.enabled ?? DEFAULT_EDITING_AGENT_LLM_CONFIG.enabled,
-        baseUrl: parsed.baseUrl ?? DEFAULT_EDITING_AGENT_LLM_CONFIG.baseUrl,
-        apiKey: parsed.apiKey ?? DEFAULT_EDITING_AGENT_LLM_CONFIG.apiKey,
-        model: parsed.model ?? DEFAULT_EDITING_AGENT_LLM_CONFIG.model,
-      }
-    } catch {
-      return DEFAULT_EDITING_AGENT_LLM_CONFIG
-    }
-  })
+  const llmConfig: EditingAgentLlmConfig = settings.editingAgentLlm ?? DEFAULT_EDITING_AGENT_LLM_CONFIG
 
-  useEffect(() => {
-    window.localStorage.setItem(EDITING_AGENT_LLM_STORAGE_KEY, JSON.stringify(llmConfig))
-  }, [llmConfig])
+  const setLlmConfig = (updater: (prev: EditingAgentLlmConfig) => EditingAgentLlmConfig) => {
+    updateSettings((prev) => ({
+      ...prev,
+      editingAgentLlm: updater(prev.editingAgentLlm ?? DEFAULT_EDITING_AGENT_LLM_CONFIG),
+    }))
+  }
 
   useEffect(() => {
     if (!showDebugLog) return

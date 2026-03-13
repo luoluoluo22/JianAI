@@ -59,6 +59,13 @@ class ProModelSettings(SettingsBaseModel):
         return _clamp_int(value, minimum=1, maximum=100, default=20)
 
 
+class EditingAgentLlmSettings(SettingsBaseModel):
+    enabled: bool = True
+    base_url: str = "http://127.0.0.1:55555"
+    api_key: str = "sk-any"
+    model: str = "deepseek-chat"
+
+
 class AppSettings(SettingsBaseModel):
     use_torch_compile: bool = False
     load_on_startup: bool = False
@@ -75,6 +82,7 @@ class AppSettings(SettingsBaseModel):
     seed_locked: bool = False
     locked_seed: int = 42
     models_dir: str = ""
+    editing_agent_llm: EditingAgentLlmSettings = Field(default_factory=EditingAgentLlmSettings)
 
     @field_validator("prompt_cache_size", mode="before")
     @classmethod
@@ -147,6 +155,7 @@ class SettingsResponse(SettingsBaseModel):
     seed_locked: bool = False
     locked_seed: int = 42
     models_dir: str = ""
+    editing_agent_llm: EditingAgentLlmSettings = Field(default_factory=EditingAgentLlmSettings)
 
 
 def to_settings_response(settings: AppSettings) -> SettingsResponse:

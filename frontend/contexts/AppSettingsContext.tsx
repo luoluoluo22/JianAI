@@ -11,6 +11,13 @@ export interface FastModelSettings {
   useUpscaler: boolean
 }
 
+export interface EditingAgentLlmSettings {
+  enabled: boolean
+  baseUrl: string
+  apiKey: string
+  model: string
+}
+
 export interface AppSettings {
   useTorchCompile: boolean
   loadOnStartup: boolean
@@ -29,6 +36,7 @@ export interface AppSettings {
   seedLocked: boolean
   lockedSeed: number
   modelsDir: string
+  editingAgentLlm: EditingAgentLlmSettings
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -49,6 +57,49 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   seedLocked: false,
   lockedSeed: 42,
   modelsDir: '',
+  editingAgentLlm: {
+    enabled: true,
+    baseUrl: 'http://127.0.0.1:55555',
+    apiKey: 'sk-any',
+    model: 'deepseek-chat',
+  },
+}
+
+const LEGACY_EDITING_AGENT_LLM_STORAGE_KEY = 'ltx-editing-agent-llm-config'
+
+function readLegacyEditingAgentLlmSettings(): EditingAgentLlmSettings | null {
+  try {
+    const raw = window.localStorage.getItem(LEGACY_EDITING_AGENT_LLM_STORAGE_KEY)
+    if (!raw) {
+      return null
+    }
+    const parsed = JSON.parse(raw) as Partial<EditingAgentLlmSettings>
+    return {
+      enabled: parsed.enabled ?? DEFAULT_APP_SETTINGS.editingAgentLlm.enabled,
+      baseUrl: parsed.baseUrl ?? DEFAULT_APP_SETTINGS.editingAgentLlm.baseUrl,
+      apiKey: parsed.apiKey ?? DEFAULT_APP_SETTINGS.editingAgentLlm.apiKey,
+      model: parsed.model ?? DEFAULT_APP_SETTINGS.editingAgentLlm.model,
+    }
+  } catch {
+    return null
+  }
+}
+
+function shouldMigrateLegacyEditingAgentLlm(
+  backendValue: EditingAgentLlmSettings,
+  legacyValue: EditingAgentLlmSettings | null,
+): legacyValue is EditingAgentLlmSettings {
+  if (!legacyValue) {
+    return false
+  }
+
+  const defaults = DEFAULT_APP_SETTINGS.editingAgentLlm
+  return (
+    backendValue.enabled === defaults.enabled &&
+    backendValue.baseUrl === defaults.baseUrl &&
+    backendValue.apiKey === defaults.apiKey &&
+    backendValue.model === defaults.model
+  )
 }
 
 type BackendProcessStatus = 'alive' | 'restarting' | 'dead'
@@ -99,6 +150,7 @@ function normalizeAppSettings(data: Partial<AppSettings>): AppSettings {
     seedLocked: data.seedLocked ?? DEFAULT_APP_SETTINGS.seedLocked,
     lockedSeed: data.lockedSeed ?? DEFAULT_APP_SETTINGS.lockedSeed,
     modelsDir: data.modelsDir ?? DEFAULT_APP_SETTINGS.modelsDir,
+    editingAgentLlm: data.editingAgentLlm ?? DEFAULT_APP_SETTINGS.editingAgentLlm,
   }
 }
 
@@ -220,11 +272,17 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     }
     const data = await response.json()
     const cloudflareSettings = readCloudflareImageSettings()
-    setSettings(normalizeAppSettings({
+    const normalized = normalizeAppSettings({
       ...data,
       cloudflareAccountId: cloudflareSettings.accountId,
       hasCloudflareApiToken: Boolean(cloudflareSettings.apiToken.trim()),
-    }))
+    })
+    const legacyEditingAgentLlm = readLegacyEditingAgentLlmSettings()
+    const nextSettings = shouldMigrateLegacyEditingAgentLlm(normalized.editingAgentLlm, legacyEditingAgentLlm)
+      ? { ...normalized, editingAgentLlm: legacyEditingAgentLlm }
+      : normalized
+
+    setSettings(nextSettings)
     setIsLoaded(true)
   }, [])
 

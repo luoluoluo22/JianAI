@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, AlertCircle, Settings, FileText } from 'lucide-react'
+import { Loader2, AlertCircle, Settings, FileText, KeyRound } from 'lucide-react'
 import { backendFetch } from './lib/backend'
 import { ProjectProvider, useProjects } from './contexts/ProjectContext'
 import { KeyboardShortcutsProvider } from './contexts/KeyboardShortcutsContext'
@@ -284,7 +284,7 @@ function AppContent() {
     </div>
   ) : null
 
-  const showGlobalControls = currentView !== 'home' && status.connected && setupState !== 'loading' && !setupState.needsSetup
+  const showGlobalControls = status.connected && setupState !== 'loading' && !setupState.needsSetup
   const shouldBlockUntilSettingsLoaded = !localBackendDisabled && forceApiGenerations && !isLoaded
   const shouldShowForcedFirstRunUpsell = !localBackendDisabled && isForcedFirstRun && isLoaded && !settings.hasLtxApiKey
   const shouldShowGlobalForcedUpsell = !localBackendDisabled && forceApiGenerations && setupState !== 'loading' && !setupState.needsSetup && isLoaded && !settings.hasLtxApiKey
@@ -458,17 +458,28 @@ function AppContent() {
       {renderView()}
 
       {showGlobalControls && (
-        <div className="fixed top-[18px] right-3 z-50 flex items-center gap-1">
+        <div className="fixed top-3 right-3 z-50 flex items-center gap-2">
+          <button
+            onClick={() => {
+              setSettingsInitialTab('apiKeys')
+              setIsSettingsOpen(true)
+            }}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-700/80 bg-zinc-950/85 px-3 text-sm text-zinc-200 shadow-lg backdrop-blur hover:border-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors"
+            title="打开 API 密钥和 Agent 设置"
+          >
+            <KeyRound className="h-4 w-4" />
+            <span>API 设置</span>
+          </button>
           <button
             onClick={() => setIsLogViewerOpen(true)}
-            className="h-8 w-8 flex items-center justify-center rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            className="h-9 w-9 flex items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-950/85 text-zinc-400 shadow-lg backdrop-blur hover:text-white hover:bg-zinc-900 transition-colors"
             title="View Backend Logs"
           >
             <FileText className="h-4 w-4" />
           </button>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="h-8 w-8 flex items-center justify-center rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            className="h-9 w-9 flex items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-950/85 text-zinc-400 shadow-lg backdrop-blur hover:text-white hover:bg-zinc-900 transition-colors"
             title="Settings"
           >
             <Settings className="h-4 w-4" />

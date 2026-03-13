@@ -2,6 +2,8 @@
 
 剪艾 JianAI 是一个面向桌面端的 AI 剪辑项目。当前阶段的核心目标不是“文生视频”，而是让用户通过自然语言直接修改时间线，实现更高效的素材编排、片段移动、裁剪、转场和标题编辑。
 
+构建命令： pnpm exec electron-builder --config electron-builder.local.yml --win --dir
+
 现阶段我们把产品重点收敛在：
 
 - AI 对话式剪辑
