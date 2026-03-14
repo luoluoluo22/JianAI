@@ -19,6 +19,47 @@ export interface EditingAgentLlmResult extends EditingAgentResult {
   jsonText: string
 }
 
+export interface HtmlAssetGenerationResult {
+  name: string
+  html: string
+  width: number
+  height: number
+  duration: number
+}
+
+function isPlaceholderHtmlAssetResult(parsed: Partial<HtmlAssetGenerationResult>): boolean {
+  const name = typeof parsed.name === 'string' ? parsed.name.trim() : ''
+  const html = typeof parsed.html === 'string' ? parsed.html.trim() : ''
+  const normalizedHtml = html.toLowerCase()
+  return (
+    !html ||
+    name === '素材名称' ||
+    html === '完整 HTML 或 SVG 字符串' ||
+    normalizedHtml.includes('完整 html 或 svg 字符串') ||
+    normalizedHtml.includes('html 或 svg 字符串') ||
+    (!normalizedHtml.includes('<html') && !normalizedHtml.includes('<svg') && !normalizedHtml.includes('<div') && !normalizedHtml.includes('<canvas'))
+  )
+}
+
+function normalizeGeneratedHtmlAsset(parsed: Partial<HtmlAssetGenerationResult>): HtmlAssetGenerationResult {
+  if (isPlaceholderHtmlAssetResult(parsed)) {
+    throw new Error('LLM returned placeholder HTML asset content')
+  }
+
+  const html = parsed.html?.trim()
+  if (!html || typeof html !== 'string') {
+    throw new Error('LLM did not return html content')
+  }
+
+  return {
+    name: typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : '网页素材',
+    html,
+    width: typeof parsed.width === 'number' && Number.isFinite(parsed.width) ? parsed.width : 1920,
+    height: typeof parsed.height === 'number' && Number.isFinite(parsed.height) ? parsed.height : 1080,
+    duration: typeof parsed.duration === 'number' && Number.isFinite(parsed.duration) ? Math.max(1, Math.min(15, parsed.duration)) : 5,
+  }
+}
+
 interface ConversationMessage {
   role: 'user' | 'assistant'
   text: string
@@ -240,6 +281,80 @@ async function requestLlmResult(
   }
 }
 
+export async function generateHtmlAssetFromPrompt(
+  userPrompt: string,
+  config: EditingAgentLlmConfig,
+): Promise<HtmlAssetGenerationResult> {
+  const resolvedUrl = buildChatCompletionsUrl(config.baseUrl)
+  const systemPrompt = [
+    '你是一个网页动效素材生成器。',
+    '你只能返回一个 JSON 对象，不能输出 markdown，不能输出解释。',
+    '必须返回真实内容，不能返回占位词、模板词或字段说明。',
+    '禁止输出“素材名称”“完整 HTML 或 SVG 字符串”“这里填写内容”这类占位文本。',
+    '格式如下：{"name":"烟花夜空","html":"<!doctype html>...</html>","width":1920,"height":1080,"duration":5}',
+    '如果是动画网页，请输出完整 HTML，包含所需的 canvas/css/js。',
+    '如果是静态矢量图，也可以直接输出单个 <svg>...</svg>。',
+    '不要引用外部脚本 CDN，尽量内联样式和脚本。',
+    'width 和 height 默认优先使用 1920x1080，除非用户明确要求竖屏。',
+    'duration 取 1 到 15 秒。',
+  ].join('\n')
+
+  const requestMessages = (extraUserInstruction?: string) => [
+    { role: 'system' as const, content: systemPrompt },
+    {
+      role: 'user' as const,
+      content: extraUserInstruction ? `${userPrompt}\n\n${extraUserInstruction}` : userPrompt,
+    },
+  ]
+
+  for (const extraInstruction of [
+    undefined,
+    '上一次返回了占位模板。这一次必须返回可直接渲染的真实 HTML 或 SVG 内容，不能返回示例字段值。',
+  ]) {
+    const response = await fetch(resolvedUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0.2,
+        messages: requestMessages(extraInstruction),
+      }),
+    })
+
+    if (!response.ok) {
+      const detail = (await response.text()).trim()
+      throw new Error(detail || `LLM request failed with status ${response.status}`)
+    }
+
+    const rawText = await response.text()
+    const data = JSON.parse(rawText) as {
+      choices?: Array<{
+        message?: {
+          content?: string
+        }
+      }>
+    }
+    const content = data.choices?.[0]?.message?.content
+    if (!content) {
+      throw new Error('LLM response did not include message content')
+    }
+
+    try {
+      const parsed = JSON.parse(extractJsonText(content)) as Partial<HtmlAssetGenerationResult>
+      return normalizeGeneratedHtmlAsset(parsed)
+    } catch (error) {
+      if (extraInstruction) {
+        throw error
+      }
+    }
+  }
+
+  throw new Error('LLM did not return a valid HTML asset payload')
+}
+
 function extractJsonText(content: string): string {
   const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i)
   const candidate = fenced?.[1]?.trim() || content.trim()
@@ -379,9 +494,60 @@ function extractImageActionsFromText(content: string): EditingAgentAction[] {
 }
 
 function buildNonJsonResult(content: string): EditingAgentLlmResult {
+  const repairedResult = tryRepairJsonishHtmlAssetResult(content)
+  if (repairedResult) {
+    return repairedResult
+  }
+
   return {
     reply: content.trim() || '模型返回了文本结果。',
     actions: extractImageActionsFromText(content),
+    referencedClipIds: [],
+    rawContent: content,
+    jsonText: '',
+  }
+}
+
+function decodeJsonishString(value: string): string {
+  return value
+    .replace(/\\"/g, '"')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\\\/g, '\\')
+}
+
+function tryRepairJsonishHtmlAssetResult(content: string): EditingAgentLlmResult | null {
+  const trimmed = content.trim()
+  if (!trimmed.startsWith('{') || !trimmed.includes('"create_html_asset"')) {
+    return null
+  }
+
+  const replyMatch = trimmed.match(/"reply"\s*:\s*"([\s\S]*?)"\s*,\s*"actions"/)
+  const htmlMatch = trimmed.match(/"html"\s*:\s*"([\s\S]*?)"\s*,\s*"name"\s*:/)
+  const nameMatch = trimmed.match(/"name"\s*:\s*"([\s\S]*?)"\s*,\s*"width"/)
+  const widthMatch = trimmed.match(/"width"\s*:\s*(\d+(?:\.\d+)?)/)
+  const heightMatch = trimmed.match(/"height"\s*:\s*(\d+(?:\.\d+)?)/)
+  const durationMatch = trimmed.match(/"duration"\s*:\s*(\d+(?:\.\d+)?)/)
+  const startTimeMatch = trimmed.match(/"startTime"\s*:\s*(\d+(?:\.\d+)?)/)
+  const trackIndexMatch = trimmed.match(/"trackIndex"\s*:\s*(\d+)/)
+
+  if (!replyMatch || !htmlMatch || !nameMatch || !widthMatch || !heightMatch || !durationMatch) {
+    return null
+  }
+
+  return {
+    reply: decodeJsonishString(replyMatch[1]).trim() || '已解析模型返回的网页素材结果。',
+    actions: [{
+      type: 'create_html_asset',
+      html: decodeJsonishString(htmlMatch[1]).trim(),
+      name: decodeJsonishString(nameMatch[1]).trim() || 'HTML 素材',
+      width: Math.max(64, Math.min(4096, Math.round(Number(widthMatch[1])))),
+      height: Math.max(64, Math.min(4096, Math.round(Number(heightMatch[1])))),
+      duration: Math.max(0.2, Number(durationMatch[1])),
+      ...(startTimeMatch ? { startTime: Math.max(0, Number(startTimeMatch[1])) } : {}),
+      ...(trackIndexMatch ? { trackIndex: Math.max(0, Math.floor(Number(trackIndexMatch[1]))) } : {}),
+    }],
     referencedClipIds: [],
     rawContent: content,
     jsonText: '',

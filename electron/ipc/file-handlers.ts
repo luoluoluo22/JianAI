@@ -8,6 +8,7 @@ import { logger } from '../logger'
 import { getMainWindow } from '../window'
 import { validatePath, approvePath } from '../path-validation'
 import { getProjectAssetsPath, setProjectAssetsPath } from '../app-state'
+import { renderHtmlToVideoWithChromium } from '../html-render/chromium-renderer'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -26,6 +27,11 @@ const MIME_TYPES: Record<string, string> = {
   '.mkv': 'video/x-matroska',
   '.mov': 'video/quicktime',
 }
+
+type HtmlAssetResult =
+  | { success: true; mediaType: 'image'; path: string; url: string; htmlPath: string; width: number; height: number }
+  | { success: true; mediaType: 'video'; path: string; url: string; htmlPath: string; thumbnailPath: string; thumbnailUrl: string; width: number; height: number }
+  | { success: false; error: string }
 
 function readLocalFileAsBase64(filePath: string): { data: string; mimeType: string } {
   const data = fs.readFileSync(filePath)
@@ -196,7 +202,8 @@ function wrapHtmlDocument(html: string, width: number, height: number): string {
         width: ${width}px;
         height: ${height}px;
         overflow: hidden;
-        background: transparent;
+        background: #ffffff;
+        color-scheme: light;
       }
       body {
         position: relative;
@@ -207,6 +214,45 @@ function wrapHtmlDocument(html: string, width: number, height: number): string {
 </html>`
 }
 
+async function ensureHtmlCaptureBackground(window: BrowserWindow): Promise<void> {
+  await window.webContents.executeJavaScript(`
+    (() => {
+      const isTransparent = (value) => !value || value === 'transparent' || value === 'rgba(0, 0, 0, 0)'
+      const htmlStyle = getComputedStyle(document.documentElement)
+      const bodyStyle = getComputedStyle(document.body)
+      document.documentElement.style.width = '100%'
+      document.documentElement.style.height = '100%'
+      document.body.style.width = '100%'
+      document.body.style.height = '100%'
+      document.body.style.minHeight = '100vh'
+      if (!document.body.style.margin) {
+        document.body.style.margin = '0'
+      }
+      document.querySelectorAll('canvas').forEach((node) => {
+        node.style.display = 'block'
+        node.style.width = '100vw'
+        node.style.height = '100vh'
+      })
+      document.querySelectorAll('svg').forEach((node) => {
+        if (!node.getAttribute('width')) {
+          node.setAttribute('width', String(window.innerWidth))
+        }
+        if (!node.getAttribute('height')) {
+          node.setAttribute('height', String(window.innerHeight))
+        }
+        node.style.display = 'block'
+      })
+      if (isTransparent(htmlStyle.backgroundColor)) {
+        document.documentElement.style.background = '#ffffff'
+      }
+      if (isTransparent(bodyStyle.backgroundColor)) {
+        document.body.style.background = '#ffffff'
+      }
+      document.documentElement.style.colorScheme = 'light'
+    })()
+  `, true)
+}
+
 async function waitForHtmlRender(window: BrowserWindow): Promise<void> {
   await window.webContents.executeJavaScript(`
     new Promise((resolve) => {
@@ -214,7 +260,9 @@ async function waitForHtmlRender(window: BrowserWindow): Promise<void> {
       const finish = () => {
         if (settled) return
         settled = true
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          setTimeout(() => resolve(true), 350)
+        }))
       }
       const timeout = setTimeout(finish, 3000)
       const fontReady = document.fonts?.ready ?? Promise.resolve()
@@ -239,6 +287,51 @@ async function waitForHtmlRender(window: BrowserWindow): Promise<void> {
   `, true)
 }
 
+function createHtmlRenderWindow(width: number, height: number, offscreen = false): BrowserWindow {
+  return new BrowserWindow({
+    show: false,
+    width,
+    height,
+    useContentSize: true,
+    frame: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    backgroundColor: '#ffffff',
+    webPreferences: {
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+      offscreen,
+    },
+  })
+}
+
+function shouldRenderHtmlAsVideo(html: string): boolean {
+  const lower = html.toLowerCase()
+  return (
+    lower.includes('<script') ||
+    lower.includes('<canvas') ||
+    lower.includes('requestanimationframe') ||
+    lower.includes('setinterval(') ||
+    lower.includes('@keyframes') ||
+    lower.includes('animation:')
+  )
+}
+
+async function createHtmlAssetVideo(
+  htmlPath: string,
+  destDir: string,
+  baseName: string,
+  width: number,
+  height: number,
+  durationSeconds: number,
+): Promise<{ success: true; path: string; url: string; thumbnailPath: string; thumbnailUrl: string; width: number; height: number } | { success: false; error: string }> {
+  return renderHtmlToVideoWithChromium(htmlPath, destDir, baseName, width, height, durationSeconds)
+}
+
 async function createHtmlAssetImage(
   projectId: string,
   payload: {
@@ -246,12 +339,15 @@ async function createHtmlAssetImage(
     width: number
     height: number
     name: string
+    duration?: number
   },
-): Promise<{ success: true; path: string; url: string; htmlPath: string; width: number; height: number } | { success: false; error: string }> {
+  outputRootOverride?: string,
+): Promise<HtmlAssetResult> {
   const width = Math.max(64, Math.min(4096, Math.round(payload.width)))
   const height = Math.max(64, Math.min(4096, Math.round(payload.height)))
   const html = payload.html.trim()
   const name = sanitizeBaseName(payload.name || 'html-asset')
+  const durationSeconds = Math.max(1, Math.min(15, payload.duration ?? 5))
 
   if (!projectId.trim()) {
     return { success: false, error: 'Missing projectId.' }
@@ -263,7 +359,7 @@ async function createHtmlAssetImage(
     return { success: false, error: 'HTML content is too large.' }
   }
 
-  const assetsRoot = getProjectAssetsPath()
+  const assetsRoot = outputRootOverride || getProjectAssetsPath()
   const destDir = path.join(assetsRoot, projectId)
   fs.mkdirSync(destDir, { recursive: true })
 
@@ -276,32 +372,39 @@ async function createHtmlAssetImage(
   let renderWindow: BrowserWindow | null = null
 
   try {
-    renderWindow = new BrowserWindow({
-      show: false,
-      width,
-      height,
-      useContentSize: true,
-      frame: false,
-      resizable: false,
-      minimizable: false,
-      maximizable: false,
-      fullscreenable: false,
-      backgroundColor: '#00000000',
-      webPreferences: {
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    })
+    renderWindow = createHtmlRenderWindow(width, height)
 
     await renderWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(documentHtml)}`)
+    await ensureHtmlCaptureBackground(renderWindow)
     await waitForHtmlRender(renderWindow)
+    fs.writeFileSync(htmlPath, documentHtml, 'utf-8')
+
+    if (shouldRenderHtmlAsVideo(documentHtml)) {
+      renderWindow.destroy()
+      renderWindow = null
+      const videoResult = await createHtmlAssetVideo(htmlPath, destDir, baseName, width, height, durationSeconds)
+      if (!videoResult.success) {
+        return videoResult
+      }
+      return {
+        success: true,
+        mediaType: 'video',
+        path: videoResult.path,
+        url: videoResult.url,
+        htmlPath,
+        thumbnailPath: videoResult.thumbnailPath,
+        thumbnailUrl: videoResult.thumbnailUrl,
+        width,
+        height,
+      }
+    }
+
     const image = await renderWindow.webContents.capturePage({ x: 0, y: 0, width, height })
     fs.writeFileSync(pngPath, image.toPNG())
-    fs.writeFileSync(htmlPath, documentHtml, 'utf-8')
 
     return {
       success: true,
+      mediaType: 'image',
       path: pngPath,
       url: pathToFileUrl(pngPath),
       htmlPath,
@@ -317,7 +420,6 @@ async function createHtmlAssetImage(
     }
   }
 }
-
 
 export function registerFileHandlers(): void {
   ipcMain.handle('open-ltx-api-key-page', async () => {

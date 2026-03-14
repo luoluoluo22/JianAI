@@ -8,6 +8,145 @@ import type { Asset, TimelineClip, Timeline } from '../../types/project'
 import { VideoThumbnailCard } from './VideoThumbnailCard'
 import { getColorLabel, COLOR_LABELS } from './video-editor-utils'
 import { Tooltip } from '../../components/ui/tooltip'
+import { useAppSettings } from '../../contexts/AppSettingsContext'
+import { DEFAULT_EDITING_AGENT_LLM_CONFIG, generateHtmlAssetFromPrompt } from './editing-agent-llm'
+
+const WEB_RENDER_SMOKE_TEST_HTML = `<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>烟花网页测试</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #050816;
+      }
+      body {
+        position: relative;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      .title {
+        position: absolute;
+        top: 64px;
+        width: 100%;
+        text-align: center;
+        font-family: "Microsoft YaHei", sans-serif;
+        font-size: 72px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        color: rgba(255, 255, 255, 0.92);
+        text-shadow: 0 10px 40px rgba(255, 196, 87, 0.3);
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="fireworks"></canvas>
+    <div class="title">烟花测试</div>
+    <script>
+      const canvas = document.getElementById('fireworks')
+      const ctx = canvas.getContext('2d')
+      const DPR = Math.max(1, window.devicePixelRatio || 1)
+      const fireworks = []
+      const particles = []
+
+      function resize() {
+        canvas.width = window.innerWidth * DPR
+        canvas.height = window.innerHeight * DPR
+        canvas.style.width = window.innerWidth + 'px'
+        canvas.style.height = window.innerHeight + 'px'
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
+      }
+
+      function launch() {
+        const startX = window.innerWidth * (0.2 + Math.random() * 0.6)
+        fireworks.push({
+          x: startX,
+          y: window.innerHeight + 20,
+          targetY: window.innerHeight * (0.18 + Math.random() * 0.3),
+          speed: 10 + Math.random() * 4,
+          hue: Math.random() * 360,
+        })
+      }
+
+      function explode(x, y, hue) {
+        const count = 70 + Math.floor(Math.random() * 40)
+        for (let i = 0; i < count; i += 1) {
+          const angle = (Math.PI * 2 * i) / count
+          const power = 1.5 + Math.random() * 4.5
+          particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * power,
+            vy: Math.sin(angle) * power,
+            alpha: 1,
+            gravity: 0.045 + Math.random() * 0.03,
+            decay: 0.008 + Math.random() * 0.01,
+            hue: hue + Math.random() * 40 - 20,
+          })
+        }
+      }
+
+      function update() {
+        ctx.fillStyle = 'rgba(5, 8, 22, 0.18)'
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
+
+        for (let i = fireworks.length - 1; i >= 0; i -= 1) {
+          const firework = fireworks[i]
+          firework.y -= firework.speed
+          firework.speed *= 0.985
+          ctx.beginPath()
+          ctx.arc(firework.x, firework.y, 3.2, 0, Math.PI * 2)
+          ctx.fillStyle = 'hsl(' + firework.hue + ', 100%, 72%)'
+          ctx.shadowBlur = 18
+          ctx.shadowColor = 'hsla(' + firework.hue + ', 100%, 75%, 0.95)'
+          ctx.fill()
+          if (firework.y <= firework.targetY || firework.speed < 1.2) {
+            explode(firework.x, firework.y, firework.hue)
+            fireworks.splice(i, 1)
+          }
+        }
+
+        ctx.shadowBlur = 0
+        for (let i = particles.length - 1; i >= 0; i -= 1) {
+          const particle = particles[i]
+          particle.x += particle.vx
+          particle.y += particle.vy
+          particle.vy += particle.gravity
+          particle.alpha -= particle.decay
+          if (particle.alpha <= 0) {
+            particles.splice(i, 1)
+            continue
+          }
+          ctx.beginPath()
+          ctx.arc(particle.x, particle.y, 2.2, 0, Math.PI * 2)
+          ctx.fillStyle = 'hsla(' + particle.hue + ', 100%, 70%, ' + particle.alpha + ')'
+          ctx.shadowBlur = 14
+          ctx.shadowColor = 'hsla(' + particle.hue + ', 100%, 70%, ' + particle.alpha + ')'
+          ctx.fill()
+        }
+
+        requestAnimationFrame(update)
+      }
+
+      resize()
+      window.addEventListener('resize', resize)
+      setInterval(launch, 520)
+      for (let i = 0; i < 3; i += 1) {
+        setTimeout(launch, i * 240)
+      }
+      requestAnimationFrame(update)
+    </script>
+  </body>
+</html>`
 
 export interface LeftPanelProps {
   leftPanelWidth: number
@@ -23,8 +162,8 @@ export interface LeftPanelProps {
   setSelectedBin: (v: string | null) => void
   bins: string[]
   filteredAssets: Asset[]
-  assetFilter: 'all' | 'video' | 'image' | 'audio'
-  setAssetFilter: (v: 'all' | 'video' | 'image' | 'audio') => void
+  assetFilter: 'all' | 'video' | 'image' | 'audio' | 'web'
+  setAssetFilter: (v: 'all' | 'video' | 'image' | 'audio' | 'web') => void
   selectedAssetIds: Set<string>
   setSelectedAssetIds: React.Dispatch<React.SetStateAction<Set<string>>>
   assetLasso: { startX: number; startY: number; currentX: number; currentY: number } | null
@@ -38,6 +177,7 @@ export interface LeftPanelProps {
   currentProjectId: string | null
   pushAssetUndoRef: React.MutableRefObject<() => void>
   updateAsset: (projectId: string, assetId: string, updates: Partial<Asset>) => void
+  addAsset: (projectId: string, assetData: Omit<Asset, 'id' | 'createdAt'>) => Asset
   loadSourceAsset: (asset: Asset) => void
   handleImportFile: (e: React.ChangeEvent<HTMLInputElement>) => void
   fileInputRef: React.RefObject<HTMLInputElement | null>
@@ -102,6 +242,7 @@ export function LeftPanel(props: LeftPanelProps) {
     currentProjectId,
     pushAssetUndoRef,
     updateAsset,
+    addAsset,
     loadSourceAsset,
     handleImportFile,
     fileInputRef,
@@ -138,6 +279,11 @@ export function LeftPanel(props: LeftPanelProps) {
   const [assetViewMode, setAssetViewMode] = useState<'grid' | 'list'>('grid')
   const [listSortCol, setListSortCol] = useState<'name' | 'type' | 'duration' | 'resolution' | 'date' | 'color'>('name')
   const [listSortDir, setListSortDir] = useState<'asc' | 'desc'>('asc')
+  const [showWebCreator, setShowWebCreator] = useState(false)
+  const [webPrompt, setWebPrompt] = useState('')
+  const [isCreatingWebAsset, setIsCreatingWebAsset] = useState(false)
+  const [webCreatorError, setWebCreatorError] = useState<string | null>(null)
+  const { settings } = useAppSettings()
 
   const toggleSort = (col: typeof listSortCol) => {
     if (listSortCol === col) {
@@ -182,6 +328,101 @@ export function LeftPanel(props: LeftPanelProps) {
     return sorted
   }, [filteredAssets, listSortCol, listSortDir, assetViewMode])
 
+  const handleCreateWebAsset = async () => {
+    if (!currentProjectId) return
+    const prompt = webPrompt.trim()
+    if (!prompt) {
+      setWebCreatorError('请输入网页效果描述。')
+      return
+    }
+
+    setIsCreatingWebAsset(true)
+    setWebCreatorError(null)
+    try {
+      const llmConfig = settings.editingAgentLlm ?? DEFAULT_EDITING_AGENT_LLM_CONFIG
+      const generated = await generateHtmlAssetFromPrompt(prompt, llmConfig)
+      const result = await window.electronAPI.createHtmlAsset(currentProjectId, generated)
+      if (!result.success || !result.path || !result.url || !result.width || !result.height) {
+        throw new Error(result.error || '网页素材创建失败。')
+      }
+
+      addAsset(currentProjectId, result.mediaType === 'video'
+        ? {
+            type: 'video',
+            sourceKind: 'html',
+            path: result.path,
+            url: result.url,
+            prompt: generated.name,
+            resolution: `${result.width}x${result.height}`,
+            duration: generated.duration,
+            ...(result.thumbnailUrl ? { thumbnail: result.thumbnailUrl } : {}),
+          }
+        : {
+            type: 'image',
+            sourceKind: 'html',
+            path: result.path,
+            url: result.url,
+            prompt: generated.name,
+            resolution: `${result.width}x${result.height}`,
+            duration: generated.duration,
+          })
+
+      setShowWebCreator(false)
+      setWebPrompt('')
+      setAssetFilter('web')
+    } catch (error) {
+      setWebCreatorError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsCreatingWebAsset(false)
+    }
+  }
+
+  const handleCreateWebSmokeTestAsset = async () => {
+    if (!currentProjectId) return
+
+    setIsCreatingWebAsset(true)
+    setWebCreatorError(null)
+    try {
+      const result = await window.electronAPI.createHtmlAsset(currentProjectId, {
+        html: WEB_RENDER_SMOKE_TEST_HTML,
+        name: '网页烟花测试',
+        width: 1920,
+        height: 1080,
+        duration: 5,
+      })
+      if (!result.success || !result.path || !result.url || !result.width || !result.height) {
+        throw new Error(result.error || '网页测试素材创建失败。')
+      }
+
+      addAsset(currentProjectId, result.mediaType === 'video'
+        ? {
+            type: 'video',
+            sourceKind: 'html',
+            path: result.path,
+            url: result.url,
+            prompt: '网页烟花测试',
+            resolution: `${result.width}x${result.height}`,
+            duration: 5,
+            ...(result.thumbnailUrl ? { thumbnail: result.thumbnailUrl } : {}),
+          }
+        : {
+            type: 'image',
+            sourceKind: 'html',
+            path: result.path,
+            url: result.url,
+            prompt: '网页烟花测试',
+            resolution: `${result.width}x${result.height}`,
+            duration: 5,
+          })
+
+      setAssetFilter('web')
+    } catch (error) {
+      setWebCreatorError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsCreatingWebAsset(false)
+    }
+  }
+
   return (
     <div className="flex-shrink-0 border-r border-zinc-800 flex flex-col" style={{ width: leftPanelWidth }}>
       {/* Assets Section */}
@@ -213,7 +454,7 @@ export function LeftPanel(props: LeftPanelProps) {
           {/* Type filter + view toggle */}
           <div className="flex items-center gap-1.5">
             <div className="flex gap-1 bg-zinc-900 rounded-lg p-0.5 flex-1">
-              {(['all', 'video', 'image', 'audio'] as const).map(filter => (
+              {(['all', 'video', 'image', 'audio', 'web'] as const).map(filter => (
                 <button
                   key={filter}
                   onClick={() => setAssetFilter(filter)}
@@ -223,7 +464,7 @@ export function LeftPanel(props: LeftPanelProps) {
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  {{ all: '全部', video: '视频', image: '图片', audio: '音频' }[filter]}
+                  {{ all: '全部', video: '视频', image: '图片', audio: '音频', web: '网页' }[filter]}
                 </button>
               ))}
             </div>
@@ -246,6 +487,54 @@ export function LeftPanel(props: LeftPanelProps) {
               </Tooltip>
             </div>
           </div>
+
+          {assetFilter === 'web' && (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-2.5 space-y-2">
+              <button
+                onClick={() => { void handleCreateWebSmokeTestAsset() }}
+                disabled={isCreatingWebAsset}
+                className="w-full rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-200 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isCreatingWebAsset ? '测试渲染中...' : '测试烟花渲染'}
+              </button>
+              {!showWebCreator ? (
+                <button
+                  onClick={() => setShowWebCreator(true)}
+                  className="w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20"
+                >
+                  新建网页素材
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    value={webPrompt}
+                    onChange={(e) => setWebPrompt(e.target.value)}
+                    placeholder="例如：黑色夜空中的爆炸烟花，保留动态效果"
+                    className="min-h-[78px] w-full resize-none rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-[12px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-emerald-500/50"
+                  />
+                  {webCreatorError && <div className="text-[11px] text-red-400">{webCreatorError}</div>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { void handleCreateWebAsset() }}
+                      disabled={isCreatingWebAsset}
+                      className="flex-1 rounded-lg bg-emerald-500 px-3 py-2 text-[12px] font-medium text-black transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isCreatingWebAsset ? '生成中...' : '生成素材'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowWebCreator(false)
+                        setWebCreatorError(null)
+                      }}
+                      className="rounded-lg border border-zinc-700 px-3 py-2 text-[12px] text-zinc-300 hover:border-zinc-500 hover:text-white"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Bins row */}
           {(bins.length > 0 || creatingBin) && (

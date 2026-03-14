@@ -118,7 +118,7 @@ export function VideoEditor() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [selectedClipIds, setSelectedClipIds] = useState<Set<string>>(new Set())
-  const [assetFilter, setAssetFilter] = useState<'all' | 'video' | 'image' | 'audio'>('all')
+  const [assetFilter, setAssetFilter] = useState<'all' | 'video' | 'image' | 'audio' | 'web'>('all')
   const [selectedBin, setSelectedBin] = useState<string | null>(null) // null = all assets
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
   // Lasso selection for assets
@@ -553,7 +553,9 @@ export function VideoEditor() {
   // Filter assets by type + bin
   const filteredAssets = useMemo(() => {
     let result = assets
-    if (assetFilter !== 'all') {
+    if (assetFilter === 'web') {
+      result = result.filter((asset) => asset.sourceKind === 'html')
+    } else if (assetFilter !== 'all') {
       result = result.filter(a => a.type === assetFilter)
     }
     if (selectedBin !== null) {
@@ -1868,6 +1870,7 @@ export function VideoEditor() {
         currentProjectId={currentProjectId}
         pushAssetUndoRef={pushAssetUndoRef}
         updateAsset={updateAsset}
+        addAsset={addAsset}
         loadSourceAsset={loadSourceAsset}
         handleImportFile={handleImportFile}
         fileInputRef={fileInputRef}

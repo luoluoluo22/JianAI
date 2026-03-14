@@ -1,7 +1,7 @@
-import { AlertCircle, Bot, Check, Download, Film, Folder, Info, KeyRound, Settings, Sliders, Sparkles, X, Zap } from 'lucide-react'
+import { AlertCircle, Bot, Check, Download, Film, Folder, Info, KeyRound, Plus, Settings, Sliders, Sparkles, Trash2, X, Zap } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { Button } from './ui/button'
-import { useAppSettings, type AppSettings } from '../contexts/AppSettingsContext'
+import { createEditingAgentProfile, updateActiveEditingAgentProfile, useAppSettings, type AppSettings } from '../contexts/AppSettingsContext'
 import { backendFetch } from '../lib/backend'
 import { logger } from '../lib/logger'
 import { ApiKeyHelperRow, LtxApiKeyInput, LtxApiKeyHelperRow } from './LtxApiKeyInput'
@@ -207,11 +207,80 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
   }
 
   const handleEditingAgentLlmChange = (patch: Partial<AppSettings['editingAgentLlm']>) => {
+    const nextEditingAgentLlm = {
+      ...settings.editingAgentLlm,
+      ...patch,
+    }
     onSettingsChange({
       ...settings,
+      editingAgentLlm: nextEditingAgentLlm,
+      editingAgentLlmProfiles: updateActiveEditingAgentProfile(
+        settings.editingAgentLlmProfiles,
+        settings.activeEditingAgentLlmProfileId,
+        nextEditingAgentLlm,
+      ),
+    })
+  }
+
+  const handleSelectEditingAgentProfile = (profileId: string) => {
+    const profile = settings.editingAgentLlmProfiles.find((item) => item.id === profileId)
+    if (!profile) return
+    onSettingsChange({
+      ...settings,
+      activeEditingAgentLlmProfileId: profile.id,
       editingAgentLlm: {
-        ...settings.editingAgentLlm,
-        ...patch,
+        enabled: profile.enabled,
+        baseUrl: profile.baseUrl,
+        apiKey: profile.apiKey,
+        model: profile.model,
+      },
+    })
+  }
+
+  const handleCreateEditingAgentProfile = () => {
+    const nextProfile = createEditingAgentProfile(
+      settings.editingAgentLlm,
+      `模型 ${settings.editingAgentLlmProfiles.length + 1}`,
+    )
+    onSettingsChange({
+      ...settings,
+      editingAgentLlmProfiles: [...settings.editingAgentLlmProfiles, nextProfile],
+      activeEditingAgentLlmProfileId: nextProfile.id,
+      editingAgentLlm: {
+        enabled: nextProfile.enabled,
+        baseUrl: nextProfile.baseUrl,
+        apiKey: nextProfile.apiKey,
+        model: nextProfile.model,
+      },
+    })
+  }
+
+  const handleRenameEditingAgentProfile = (profileId: string, name: string) => {
+    onSettingsChange({
+      ...settings,
+      editingAgentLlmProfiles: settings.editingAgentLlmProfiles.map((profile) => (
+        profile.id === profileId
+          ? { ...profile, name: name.trim() || profile.model || '未命名模型' }
+          : profile
+      )),
+    })
+  }
+
+  const handleDeleteEditingAgentProfile = (profileId: string) => {
+    if (settings.editingAgentLlmProfiles.length <= 1) {
+      return
+    }
+    const nextProfiles = settings.editingAgentLlmProfiles.filter((profile) => profile.id !== profileId)
+    const nextActiveProfile = nextProfiles.find((profile) => profile.id === settings.activeEditingAgentLlmProfileId) ?? nextProfiles[0]
+    onSettingsChange({
+      ...settings,
+      editingAgentLlmProfiles: nextProfiles,
+      activeEditingAgentLlmProfileId: nextActiveProfile.id,
+      editingAgentLlm: {
+        enabled: nextActiveProfile.enabled,
+        baseUrl: nextActiveProfile.baseUrl,
+        apiKey: nextActiveProfile.apiKey,
+        model: nextActiveProfile.model,
       },
     })
   }
@@ -1100,6 +1169,51 @@ export function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProp
                       />
                     </button>
                   </label>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs text-zinc-400">已保存模型</label>
+                      <button
+                        onClick={handleCreateEditingAgentProfile}
+                        className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-white"
+                      >
+                        <Plus className="h-3 w-3" />
+                        新增
+                      </button>
+                    </div>
+                    <select
+                      value={settings.activeEditingAgentLlmProfileId}
+                      onChange={(e) => handleSelectEditingAgentProfile(e.target.value)}
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {settings.editingAgentLlmProfiles.map((profile) => (
+                        <option key={profile.id} value={profile.id}>
+                          {profile.name} / {profile.model}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs text-zinc-400">模型名称</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={settings.editingAgentLlmProfiles.find((profile) => profile.id === settings.activeEditingAgentLlmProfileId)?.name ?? ''}
+                        onChange={(e) => handleRenameEditingAgentProfile(settings.activeEditingAgentLlmProfileId, e.target.value)}
+                        placeholder="例如：豆包聊天"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        onClick={() => handleDeleteEditingAgentProfile(settings.activeEditingAgentLlmProfileId)}
+                        disabled={settings.editingAgentLlmProfiles.length <= 1}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-red-500/50 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+                        title="删除当前模型"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="space-y-2">
                     <label className="block text-xs text-zinc-400">Base URL</label>

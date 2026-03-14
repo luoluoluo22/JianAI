@@ -34,6 +34,7 @@ export interface AssetTake {
 export interface Asset {
   id: string
   type: 'image' | 'video' | 'audio' | 'adjustment'
+  sourceKind?: 'html'
   path: string
   url: string
   prompt: string

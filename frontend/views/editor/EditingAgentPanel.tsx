@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { ChevronDown, ChevronUp, FolderOpen, Loader2, MessageSquare, Plus, Send, Settings2, Sparkles, X } from 'lucide-react'
 import type { Asset, TimelineClip, Track } from '../../types/project'
-import { useAppSettings } from '../../contexts/AppSettingsContext'
+import { updateActiveEditingAgentProfile, useAppSettings } from '../../contexts/AppSettingsContext'
 import {
   applyEditingAgentActions,
   assetDisplayName,
@@ -146,9 +146,30 @@ export function EditingAgentPanel({
   const llmConfig: EditingAgentLlmConfig = settings.editingAgentLlm ?? DEFAULT_EDITING_AGENT_LLM_CONFIG
 
   const setLlmConfig = (updater: (prev: EditingAgentLlmConfig) => EditingAgentLlmConfig) => {
+    const nextEditingAgentLlm = updater(settings.editingAgentLlm ?? DEFAULT_EDITING_AGENT_LLM_CONFIG)
     updateSettings((prev) => ({
       ...prev,
-      editingAgentLlm: updater(prev.editingAgentLlm ?? DEFAULT_EDITING_AGENT_LLM_CONFIG),
+      editingAgentLlm: nextEditingAgentLlm,
+      editingAgentLlmProfiles: updateActiveEditingAgentProfile(
+        prev.editingAgentLlmProfiles,
+        prev.activeEditingAgentLlmProfileId,
+        nextEditingAgentLlm,
+      ),
+    }))
+  }
+
+  const handleSelectLlmProfile = (profileId: string) => {
+    const profile = settings.editingAgentLlmProfiles.find((item) => item.id === profileId)
+    if (!profile) return
+    updateSettings((prev) => ({
+      ...prev,
+      activeEditingAgentLlmProfileId: profile.id,
+      editingAgentLlm: {
+        enabled: profile.enabled,
+        baseUrl: profile.baseUrl,
+        apiKey: profile.apiKey,
+        model: profile.model,
+      },
     }))
   }
 
@@ -303,23 +324,36 @@ export function EditingAgentPanel({
         width: action.width,
         height: action.height,
         name: action.name,
+        duration: action.duration,
       })
 
       if (!result.success || !result.path || !result.url || !result.width || !result.height) {
         throw new Error(result.error || '创建 HTML 素材失败。')
       }
 
-      const createdAsset = addAsset(currentProjectId, {
-        type: 'image',
-        path: result.path,
-        url: result.url,
-        prompt: action.name.trim() || 'HTML 素材',
-        resolution: `${result.width}x${result.height}`,
-        duration: action.duration,
-      })
+      const createdAsset = addAsset(currentProjectId, result.mediaType === 'video'
+        ? {
+            type: 'video',
+            sourceKind: 'html',
+            path: result.path,
+            url: result.url,
+            prompt: action.name.trim() || 'HTML 素材',
+            resolution: `${result.width}x${result.height}`,
+            duration: action.duration,
+            ...(result.thumbnailUrl ? { thumbnail: result.thumbnailUrl } : {}),
+          }
+        : {
+            type: 'image',
+            sourceKind: 'html',
+            path: result.path,
+            url: result.url,
+            prompt: action.name.trim() || 'HTML 素材',
+            resolution: `${result.width}x${result.height}`,
+            duration: action.duration,
+          })
 
       createdAssets.push(createdAsset)
-      createdSummaries.push(`已生成 HTML 素材“${assetDisplayName(createdAsset)}”。`)
+      createdSummaries.push(`已生成 HTML ${result.mediaType === 'video' ? '视频' : '素材'}“${assetDisplayName(createdAsset)}”。`)
 
       if (action.insertAfterClipId) {
         executableActions.push({
@@ -742,6 +776,20 @@ export function EditingAgentPanel({
             <p className="text-[11px] text-zinc-500">
               {llmConfig.enabled ? `当前模型：${llmConfig.model}` : '当前模型：本地规则引擎'}
             </p>
+          </div>
+          <div className="min-w-0 max-w-[180px]">
+            <select
+              value={settings.activeEditingAgentLlmProfileId}
+              onChange={(e) => handleSelectLlmProfile(e.target.value)}
+              className="h-8 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 text-[11px] text-zinc-300 outline-none transition-colors hover:border-zinc-600 focus:border-emerald-500/50"
+              title="切换模型配置"
+            >
+              {settings.editingAgentLlmProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <button

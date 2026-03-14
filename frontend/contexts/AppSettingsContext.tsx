@@ -18,6 +18,11 @@ export interface EditingAgentLlmSettings {
   model: string
 }
 
+export interface EditingAgentLlmProfile extends EditingAgentLlmSettings {
+  id: string
+  name: string
+}
+
 export interface AppSettings {
   useTorchCompile: boolean
   loadOnStartup: boolean
@@ -37,6 +42,65 @@ export interface AppSettings {
   lockedSeed: number
   modelsDir: string
   editingAgentLlm: EditingAgentLlmSettings
+  editingAgentLlmProfiles: EditingAgentLlmProfile[]
+  activeEditingAgentLlmProfileId: string
+}
+
+function createEditingAgentProfileId(): string {
+  return `agent-profile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function createEditingAgentProfile(
+  settings: EditingAgentLlmSettings,
+  name = settings.model || '未命名模型',
+  id = createEditingAgentProfileId(),
+): EditingAgentLlmProfile {
+  return {
+    id,
+    name: name.trim() || settings.model || '未命名模型',
+    ...settings,
+  }
+}
+
+export function updateActiveEditingAgentProfile(
+  profiles: EditingAgentLlmProfile[],
+  activeProfileId: string,
+  settings: EditingAgentLlmSettings,
+): EditingAgentLlmProfile[] {
+  return profiles.map((profile) => (
+    profile.id === activeProfileId
+      ? {
+          ...profile,
+          ...settings,
+        }
+      : profile
+  ))
+}
+
+function ensureEditingAgentProfileState(
+  editingAgentLlm: EditingAgentLlmSettings,
+  editingAgentLlmProfiles: EditingAgentLlmProfile[],
+  activeEditingAgentLlmProfileId: string,
+): {
+  editingAgentLlm: EditingAgentLlmSettings
+  editingAgentLlmProfiles: EditingAgentLlmProfile[]
+  activeEditingAgentLlmProfileId: string
+} {
+  const profiles = editingAgentLlmProfiles.length > 0
+    ? editingAgentLlmProfiles
+    : [createEditingAgentProfile(editingAgentLlm, '默认模型', DEFAULT_EDITING_AGENT_PROFILE.id)]
+  const activeProfile = profiles.find((profile) => profile.id === activeEditingAgentLlmProfileId) ?? profiles[0]
+
+  return {
+    editingAgentLlm: {
+      enabled: activeProfile.enabled,
+      baseUrl: activeProfile.baseUrl,
+      apiKey: activeProfile.apiKey,
+      model: activeProfile.model,
+    },
+    editingAgentLlmProfiles: profiles,
+    activeEditingAgentLlmProfileId: activeProfile.id,
+  }
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -63,7 +127,18 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     apiKey: 'sk-any',
     model: 'deepseek-chat',
   },
+  editingAgentLlmProfiles: [],
+  activeEditingAgentLlmProfileId: '',
 }
+
+const DEFAULT_EDITING_AGENT_PROFILE = createEditingAgentProfile(
+  DEFAULT_APP_SETTINGS.editingAgentLlm,
+  '默认模型',
+  'agent-profile-default',
+)
+
+DEFAULT_APP_SETTINGS.editingAgentLlmProfiles = [DEFAULT_EDITING_AGENT_PROFILE]
+DEFAULT_APP_SETTINGS.activeEditingAgentLlmProfileId = DEFAULT_EDITING_AGENT_PROFILE.id
 
 const LEGACY_EDITING_AGENT_LLM_STORAGE_KEY = 'ltx-editing-agent-llm-config'
 
@@ -98,6 +173,40 @@ async function readRendererEditingAgentLlmSettings(): Promise<EditingAgentLlmSet
       apiKey: parsed.apiKey ?? DEFAULT_APP_SETTINGS.editingAgentLlm.apiKey,
       model: parsed.model ?? DEFAULT_APP_SETTINGS.editingAgentLlm.model,
     }
+  } catch {
+    return null
+  }
+}
+
+async function readRendererEditingAgentLlmProfiles(): Promise<{
+  profiles: EditingAgentLlmProfile[]
+  activeProfileId: string | null
+} | null> {
+  try {
+    const raw = await window.electronAPI.getRendererSettings()
+    const rawProfiles = Array.isArray(raw.editingAgentLlmProfiles) ? raw.editingAgentLlmProfiles : []
+    const profiles = rawProfiles
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object') {
+          return null
+        }
+        const profile = entry as Partial<EditingAgentLlmProfile>
+        return createEditingAgentProfile(
+          {
+            enabled: profile.enabled ?? DEFAULT_APP_SETTINGS.editingAgentLlm.enabled,
+            baseUrl: profile.baseUrl ?? DEFAULT_APP_SETTINGS.editingAgentLlm.baseUrl,
+            apiKey: profile.apiKey ?? DEFAULT_APP_SETTINGS.editingAgentLlm.apiKey,
+            model: profile.model ?? DEFAULT_APP_SETTINGS.editingAgentLlm.model,
+          },
+          profile.name ?? profile.model ?? '未命名模型',
+          profile.id ?? createEditingAgentProfileId(),
+        )
+      })
+      .filter((profile): profile is EditingAgentLlmProfile => profile !== null)
+    const activeProfileId = typeof raw.activeEditingAgentLlmProfileId === 'string'
+      ? raw.activeEditingAgentLlmProfileId
+      : null
+    return { profiles, activeProfileId }
   } catch {
     return null
   }
@@ -150,6 +259,19 @@ function toBackendProcessStatus(value: unknown): BackendProcessStatus | null {
 }
 
 function normalizeAppSettings(data: Partial<AppSettings>): AppSettings {
+  const normalizedEditingAgentLlm = data.editingAgentLlm ?? DEFAULT_APP_SETTINGS.editingAgentLlm
+  const normalizedProfiles = Array.isArray(data.editingAgentLlmProfiles) && data.editingAgentLlmProfiles.length > 0
+    ? data.editingAgentLlmProfiles.map((profile) => createEditingAgentProfile(profile, profile.name, profile.id))
+    : [createEditingAgentProfile(normalizedEditingAgentLlm, '默认模型', DEFAULT_EDITING_AGENT_PROFILE.id)]
+  const activeProfileId = data.activeEditingAgentLlmProfileId && normalizedProfiles.some((profile) => profile.id === data.activeEditingAgentLlmProfileId)
+    ? data.activeEditingAgentLlmProfileId
+    : normalizedProfiles[0].id
+  const editingAgentProfileState = ensureEditingAgentProfileState(
+    normalizedEditingAgentLlm,
+    normalizedProfiles,
+    activeProfileId,
+  )
+
   return {
     useTorchCompile: data.useTorchCompile ?? DEFAULT_APP_SETTINGS.useTorchCompile,
     loadOnStartup: data.loadOnStartup ?? DEFAULT_APP_SETTINGS.loadOnStartup,
@@ -168,7 +290,9 @@ function normalizeAppSettings(data: Partial<AppSettings>): AppSettings {
     seedLocked: data.seedLocked ?? DEFAULT_APP_SETTINGS.seedLocked,
     lockedSeed: data.lockedSeed ?? DEFAULT_APP_SETTINGS.lockedSeed,
     modelsDir: data.modelsDir ?? DEFAULT_APP_SETTINGS.modelsDir,
-    editingAgentLlm: data.editingAgentLlm ?? DEFAULT_APP_SETTINGS.editingAgentLlm,
+    editingAgentLlm: editingAgentProfileState.editingAgentLlm,
+    editingAgentLlmProfiles: editingAgentProfileState.editingAgentLlmProfiles,
+    activeEditingAgentLlmProfileId: editingAgentProfileState.activeEditingAgentLlmProfileId,
   }
 }
 
@@ -187,14 +311,24 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     const loadRendererSettings = async () => {
       const legacyEditingAgentLlm = readLegacyEditingAgentLlmSettings()
       const rendererEditingAgentLlm = await readRendererEditingAgentLlmSettings()
+      const rendererProfileState = await readRendererEditingAgentLlmProfiles()
       const preferredEditingAgentLlm = rendererEditingAgentLlm ?? legacyEditingAgentLlm
       if (cancelled) {
         return
       }
-      if (preferredEditingAgentLlm) {
+      if (preferredEditingAgentLlm || rendererProfileState) {
         setSettings((prev) => ({
           ...prev,
-          editingAgentLlm: preferredEditingAgentLlm,
+          ...(preferredEditingAgentLlm ? { editingAgentLlm: preferredEditingAgentLlm } : {}),
+          ...(rendererProfileState?.profiles.length
+            ? {
+                editingAgentLlmProfiles: rendererProfileState.profiles,
+                activeEditingAgentLlmProfileId:
+                  rendererProfileState.activeProfileId && rendererProfileState.profiles.some((profile) => profile.id === rendererProfileState.activeProfileId)
+                    ? rendererProfileState.activeProfileId
+                    : rendererProfileState.profiles[0].id,
+              }
+            : {}),
         }))
       }
       setRendererSettingsLoaded(true)
@@ -328,14 +462,25 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     })
     const legacyEditingAgentLlm = readLegacyEditingAgentLlmSettings()
     const rendererEditingAgentLlm = await readRendererEditingAgentLlmSettings()
+    const rendererProfileState = await readRendererEditingAgentLlmProfiles()
     const migratedEditingAgentLlm = shouldMigrateLegacyEditingAgentLlm(normalized.editingAgentLlm, legacyEditingAgentLlm)
       ? legacyEditingAgentLlm
       : shouldMigrateLegacyEditingAgentLlm(normalized.editingAgentLlm, rendererEditingAgentLlm)
         ? rendererEditingAgentLlm
         : null
-    const nextSettings = migratedEditingAgentLlm
-      ? { ...normalized, editingAgentLlm: migratedEditingAgentLlm }
-      : normalized
+    const nextSettings = normalizeAppSettings({
+      ...normalized,
+      ...(migratedEditingAgentLlm ? { editingAgentLlm: migratedEditingAgentLlm } : {}),
+      ...(rendererProfileState?.profiles.length
+        ? {
+            editingAgentLlmProfiles: rendererProfileState.profiles,
+            activeEditingAgentLlmProfileId:
+              rendererProfileState.activeProfileId && rendererProfileState.profiles.some((profile) => profile.id === rendererProfileState.activeProfileId)
+                ? rendererProfileState.activeProfileId
+                : rendererProfileState.profiles[0].id,
+          }
+        : {}),
+    })
 
     setSettings(nextSettings)
     setIsLoaded(true)
@@ -375,6 +520,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       try {
         await window.electronAPI.saveRendererSettings({
           editingAgentLlm: settings.editingAgentLlm,
+          editingAgentLlmProfiles: settings.editingAgentLlmProfiles,
+          activeEditingAgentLlmProfileId: settings.activeEditingAgentLlmProfileId,
         })
 
         if (backendDisabled || backendProcessStatus !== 'alive') {
@@ -387,6 +534,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           hasCloudflareApiToken: _d,
           hasGeminiApiKey: _e,
           modelsDir: _f,
+          editingAgentLlmProfiles: _g,
+          activeEditingAgentLlmProfileId: _h,
           ...syncPayload
         } = settings
         await backendFetch('/api/settings', {
@@ -403,10 +552,10 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = useCallback((patch: Partial<AppSettings> | ((prev: AppSettings) => AppSettings)) => {
     if (typeof patch === 'function') {
-      setSettings((prev) => patch(prev))
+      setSettings((prev) => normalizeAppSettings(patch(prev)))
       return
     }
-    setSettings((prev) => ({ ...prev, ...patch }))
+    setSettings((prev) => normalizeAppSettings({ ...prev, ...patch }))
   }, [])
 
   const saveLtxApiKey = useCallback(async (value: string) => {
