@@ -19,6 +19,14 @@ asarUnpack:
   - dist/splash/**
 
 extraResources:
+  - from: resources/ms-playwright
+    to: ms-playwright
+    filter:
+      - "**/*"
+  - from: resources/ffmpeg
+    to: ffmpeg
+    filter:
+      - "**/*"
   - from: backend
     to: backend
     filter:

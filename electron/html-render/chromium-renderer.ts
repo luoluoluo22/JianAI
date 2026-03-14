@@ -1,7 +1,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { chromium } from 'playwright-core'
+import { app } from 'electron'
 import { logger } from '../logger'
 import { findFfmpegPath, runFfmpeg } from '../export/ffmpeg-utils'
 
@@ -14,6 +14,25 @@ export function findChromiumExecutable(): string | null {
   const envPath = process.env.JIANAI_CHROMIUM_PATH?.trim()
   if (envPath && fs.existsSync(envPath)) {
     return envPath
+  }
+
+  const bundledCandidates = [
+    path.join(process.resourcesPath, 'ms-playwright', 'chromium-1169', 'chrome-win', 'chrome.exe'),
+    path.join(process.resourcesPath, 'ms-playwright', 'chromium-1161', 'chrome-win', 'chrome.exe'),
+    path.join(process.resourcesPath, 'ms-playwright', 'chromium-1148', 'chrome-win', 'chrome.exe'),
+    path.join(process.resourcesPath, 'chromium', 'chrome-win', 'chrome.exe'),
+    path.join(process.resourcesPath, 'chromium', 'chrome.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ms-playwright', 'chromium-1169', 'chrome-win', 'chrome.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ms-playwright', 'chromium-1161', 'chrome-win', 'chrome.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ms-playwright', 'chromium-1148', 'chrome-win', 'chrome.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'chromium', 'chrome-win', 'chrome.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'chromium', 'chrome.exe'),
+  ]
+
+  for (const candidate of bundledCandidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
   }
 
   if (process.platform === 'win32') {
@@ -54,6 +73,25 @@ export function findChromiumExecutable(): string | null {
   return candidates.find((candidate) => fs.existsSync(candidate)) ?? null
 }
 
+async function getPlaywrightChromium() {
+  const executablePath = findChromiumExecutable()
+  if (!executablePath) {
+    throw new Error('No Chrome/Edge executable found for HTML rendering.')
+  }
+
+  const bundledRuntimeCandidates = [
+    path.join(process.resourcesPath, 'ms-playwright'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ms-playwright'),
+  ]
+  const bundledRuntimePath = bundledRuntimeCandidates.find((candidate) => fs.existsSync(candidate))
+  if (bundledRuntimePath) {
+    process.env.PLAYWRIGHT_BROWSERS_PATH = bundledRuntimePath
+  }
+
+  const playwright = await import('playwright-core')
+  return { chromium: playwright.chromium, executablePath, bundledRuntimePath }
+}
+
 export async function renderHtmlToVideoWithChromium(
   htmlPath: string,
   destDir: string,
@@ -65,11 +103,6 @@ export async function renderHtmlToVideoWithChromium(
   | { success: true; path: string; url: string; thumbnailPath: string; thumbnailUrl: string; width: number; height: number }
   | { success: false; error: string }
 > {
-  const executablePath = findChromiumExecutable()
-  if (!executablePath) {
-    return { success: false, error: 'No Chrome/Edge executable found for HTML video rendering.' }
-  }
-
   const ffmpegPath = findFfmpegPath()
   if (!ffmpegPath) {
     return { success: false, error: 'FFmpeg not found for HTML video rendering.' }
@@ -80,13 +113,14 @@ export async function renderHtmlToVideoWithChromium(
   const outputPath = path.join(destDir, `${baseName}.mp4`)
   const thumbnailPath = path.join(destDir, `${baseName}-thumb.png`)
   const fileUrl = pathToFileUrl(htmlPath)
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null
-  let context: Awaited<ReturnType<typeof chromium.launch>> extends infer _T ? any : never
+  let browser: any = null
+  let context: any = null
   let page: any = null
   let video: { path(): Promise<string> } | null = null
 
   try {
-    logger.info(`[html-render] launching chromium executable=${executablePath}`)
+    const { chromium, executablePath, bundledRuntimePath } = await getPlaywrightChromium()
+    logger.info(`[html-render] launching chromium executable=${executablePath}${bundledRuntimePath ? ` runtime=${bundledRuntimePath}` : ''}`)
     browser = await chromium.launch({
       executablePath,
       headless: true,
@@ -193,19 +227,15 @@ export async function renderHtmlToImageWithChromium(
   | { success: true; path: string; url: string; width: number; height: number }
   | { success: false; error: string }
 > {
-  const executablePath = findChromiumExecutable()
-  if (!executablePath) {
-    return { success: false, error: 'No Chrome/Edge executable found for HTML image rendering.' }
-  }
-
   const outputPath = path.join(destDir, `${baseName}.png`)
   const fileUrl = pathToFileUrl(htmlPath)
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null
-  let context: Awaited<ReturnType<typeof chromium.launch>> extends infer _T ? any : never
+  let browser: any = null
+  let context: any = null
   let page: any = null
 
   try {
-    logger.info(`[html-render] launching chromium screenshot executable=${executablePath}`)
+    const { chromium, executablePath, bundledRuntimePath } = await getPlaywrightChromium()
+    logger.info(`[html-render] launching chromium screenshot executable=${executablePath}${bundledRuntimePath ? ` runtime=${bundledRuntimePath}` : ''}`)
     browser = await chromium.launch({
       executablePath,
       headless: true,

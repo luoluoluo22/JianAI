@@ -1,6 +1,7 @@
 import { spawn, spawnSync, ChildProcess, execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
+import { app } from 'electron'
 import { isDev, getCurrentDir } from '../config'
 import { logger } from '../logger'
 import { getPythonDir } from '../python-setup'
@@ -8,6 +9,23 @@ import { getPythonDir } from '../python-setup'
 let activeExportProcess: ChildProcess | null = null
 
 export function findFfmpegPath(): string | null {
+  const bundledCandidates = [
+    path.join(process.resourcesPath, 'ffmpeg', 'ffmpeg.exe'),
+    path.join(process.resourcesPath, 'ffmpeg', 'ffmpeg-win64.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ffmpeg', 'ffmpeg.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ffmpeg', 'ffmpeg-win64.exe'),
+    path.join(process.resourcesPath, 'ms-playwright', 'ffmpeg-1011', 'ffmpeg-win64.exe'),
+    path.join(process.resourcesPath, 'ms-playwright', 'ffmpeg-1010', 'ffmpeg-win64.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ms-playwright', 'ffmpeg-1011', 'ffmpeg-win64.exe'),
+    path.resolve(app.isPackaged ? process.resourcesPath : process.cwd(), 'resources', 'ms-playwright', 'ffmpeg-1010', 'ffmpeg-win64.exe'),
+  ]
+
+  for (const candidate of bundledCandidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+
   let binDir: string | null = null
 
   if (process.platform === 'win32') {
