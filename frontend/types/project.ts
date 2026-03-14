@@ -28,6 +28,7 @@ export interface AssetTake {
   url: string
   path: string
   thumbnail?: string
+  managedPaths?: string[]
   createdAt: number
 }
 
@@ -37,6 +38,7 @@ export interface Asset {
   sourceKind?: 'html'
   path: string
   url: string
+  managedPaths?: string[]
   prompt: string
   resolution: string
   duration?: number // For videos

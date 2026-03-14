@@ -60,6 +60,31 @@ function normalizeGeneratedHtmlAsset(parsed: Partial<HtmlAssetGenerationResult>)
   }
 }
 
+function isLikelyHtmlContent(content: string): boolean {
+  const trimmed = content.trim().toLowerCase()
+  return (
+    trimmed.startsWith('<!doctype html') ||
+    trimmed.startsWith('<html') ||
+    trimmed.startsWith('<svg') ||
+    trimmed.startsWith('<div') ||
+    trimmed.includes('<canvas') ||
+    trimmed.includes('<body')
+  )
+}
+
+function normalizeHtmlOnlyAssetResult(html: string, partial?: Partial<HtmlAssetGenerationResult>): HtmlAssetGenerationResult {
+  const requestedWidth = typeof partial?.width === 'number' && Number.isFinite(partial.width) ? partial.width : 1920
+  const requestedHeight = typeof partial?.height === 'number' && Number.isFinite(partial.height) ? partial.height : 1080
+  const requestedDuration = typeof partial?.duration === 'number' && Number.isFinite(partial.duration) ? partial.duration : 5
+  return normalizeGeneratedHtmlAsset({
+    name: typeof partial?.name === 'string' && partial.name.trim() ? partial.name : '网页素材',
+    html,
+    width: requestedWidth,
+    height: requestedHeight,
+    duration: requestedDuration,
+  })
+}
+
 interface ConversationMessage {
   role: 'user' | 'assistant'
   text: string
@@ -344,8 +369,18 @@ export async function generateHtmlAssetFromPrompt(
 
     try {
       const parsed = JSON.parse(extractJsonText(content)) as Partial<HtmlAssetGenerationResult>
+      if (typeof parsed.html === 'string' && (!('width' in parsed) || !('height' in parsed) || !('duration' in parsed))) {
+        return normalizeHtmlOnlyAssetResult(parsed.html, parsed)
+      }
       return normalizeGeneratedHtmlAsset(parsed)
     } catch (error) {
+      const repaired = tryRepairHtmlAssetGenerationResult(content)
+      if (repaired) {
+        return repaired
+      }
+      if (isLikelyHtmlContent(content)) {
+        return normalizeHtmlOnlyAssetResult(content)
+      }
       if (extraInstruction) {
         throw error
       }
@@ -517,36 +552,155 @@ function decodeJsonishString(value: string): string {
     .replace(/\\\\/g, '\\')
 }
 
+function extractQuotedField(content: string, key: string): string | null {
+  const keyPattern = `"${key}"`
+  const keyIndex = content.indexOf(keyPattern)
+  if (keyIndex === -1) return null
+
+  const colonIndex = content.indexOf(':', keyIndex + keyPattern.length)
+  if (colonIndex === -1) return null
+
+  let valueStart = colonIndex + 1
+  while (valueStart < content.length && /\s/.test(content[valueStart])) {
+    valueStart += 1
+  }
+  if (content[valueStart] !== '"') return null
+  valueStart += 1
+
+  let index = valueStart
+  let escaping = false
+  while (index < content.length) {
+    const char = content[index]
+    if (escaping) {
+      escaping = false
+      index += 1
+      continue
+    }
+    if (char === '\\') {
+      escaping = true
+      index += 1
+      continue
+    }
+    if (char === '"') {
+      return content.slice(valueStart, index)
+    }
+    index += 1
+  }
+
+  return null
+}
+
+function extractNumericField(content: string, key: string): number | null {
+  const match = content.match(new RegExp(`"${key}"\\s*:\\s*(\\d+(?:\\.\\d+)?)`))
+  if (!match) return null
+  const value = Number(match[1])
+  return Number.isFinite(value) ? value : null
+}
+
+function extractJsonishHtmlSegment(content: string): string | null {
+  const htmlKey = '"html"'
+  const nameKey = '"name"'
+  const htmlKeyIndex = content.indexOf(htmlKey)
+  if (htmlKeyIndex === -1) return null
+
+  const htmlColonIndex = content.indexOf(':', htmlKeyIndex + htmlKey.length)
+  if (htmlColonIndex === -1) return null
+
+  let htmlValueStart = htmlColonIndex + 1
+  while (htmlValueStart < content.length && /\s/.test(content[htmlValueStart])) {
+    htmlValueStart += 1
+  }
+  if (content[htmlValueStart] !== '"') return null
+  htmlValueStart += 1
+
+  const nameKeyIndex = content.lastIndexOf(nameKey)
+  if (nameKeyIndex === -1 || nameKeyIndex <= htmlValueStart) return null
+
+  let htmlValueEnd = nameKeyIndex
+  while (htmlValueEnd > htmlValueStart && /\s/.test(content[htmlValueEnd - 1])) {
+    htmlValueEnd -= 1
+  }
+  if (content[htmlValueEnd - 1] === ',') {
+    htmlValueEnd -= 1
+  }
+  while (htmlValueEnd > htmlValueStart && /\s/.test(content[htmlValueEnd - 1])) {
+    htmlValueEnd -= 1
+  }
+  if (content[htmlValueEnd - 1] !== '"') return null
+
+  return content.slice(htmlValueStart, htmlValueEnd - 1)
+}
+
+function tryRepairHtmlAssetGenerationResult(content: string): HtmlAssetGenerationResult | null {
+  const trimmed = content.trim()
+  if (!trimmed.startsWith('{') || !trimmed.includes('"html"') || !trimmed.includes('"name"')) {
+    if (trimmed.startsWith('{') && trimmed.includes('"html"')) {
+      const htmlOnly = extractJsonishHtmlSegment(trimmed) ?? extractQuotedField(trimmed, 'html')
+      if (htmlOnly) {
+        const width = extractNumericField(trimmed, 'width') ?? 1920
+        const height = extractNumericField(trimmed, 'height') ?? 1080
+        const duration = extractNumericField(trimmed, 'duration') ?? 5
+        const name = extractQuotedField(trimmed, 'name') ?? '网页素材'
+        return normalizeHtmlOnlyAssetResult(decodeJsonishString(htmlOnly).trim(), {
+          name: decodeJsonishString(name).trim(),
+          width,
+          height,
+          duration,
+        })
+      }
+    }
+    return null
+  }
+
+  const html = extractJsonishHtmlSegment(trimmed)
+  const name = extractQuotedField(trimmed, 'name')
+  const width = extractNumericField(trimmed, 'width')
+  const height = extractNumericField(trimmed, 'height')
+  const duration = extractNumericField(trimmed, 'duration')
+
+  if (!html || !name || width === null || height === null || duration === null) {
+    return null
+  }
+
+  return normalizeGeneratedHtmlAsset({
+    html: decodeJsonishString(html).trim(),
+    name: decodeJsonishString(name).trim(),
+    width,
+    height,
+    duration,
+  })
+}
+
 function tryRepairJsonishHtmlAssetResult(content: string): EditingAgentLlmResult | null {
   const trimmed = content.trim()
   if (!trimmed.startsWith('{') || !trimmed.includes('"create_html_asset"')) {
     return null
   }
 
-  const replyMatch = trimmed.match(/"reply"\s*:\s*"([\s\S]*?)"\s*,\s*"actions"/)
-  const htmlMatch = trimmed.match(/"html"\s*:\s*"([\s\S]*?)"\s*,\s*"name"\s*:/)
-  const nameMatch = trimmed.match(/"name"\s*:\s*"([\s\S]*?)"\s*,\s*"width"/)
-  const widthMatch = trimmed.match(/"width"\s*:\s*(\d+(?:\.\d+)?)/)
-  const heightMatch = trimmed.match(/"height"\s*:\s*(\d+(?:\.\d+)?)/)
-  const durationMatch = trimmed.match(/"duration"\s*:\s*(\d+(?:\.\d+)?)/)
-  const startTimeMatch = trimmed.match(/"startTime"\s*:\s*(\d+(?:\.\d+)?)/)
-  const trackIndexMatch = trimmed.match(/"trackIndex"\s*:\s*(\d+)/)
+  const reply = extractQuotedField(trimmed, 'reply')
+  const html = extractJsonishHtmlSegment(trimmed)
+  const name = extractQuotedField(trimmed, 'name')
+  const width = extractNumericField(trimmed, 'width')
+  const height = extractNumericField(trimmed, 'height')
+  const duration = extractNumericField(trimmed, 'duration')
+  const startTime = extractNumericField(trimmed, 'startTime')
+  const trackIndex = extractNumericField(trimmed, 'trackIndex')
 
-  if (!replyMatch || !htmlMatch || !nameMatch || !widthMatch || !heightMatch || !durationMatch) {
+  if (!reply || !html || !name || width === null || height === null || duration === null) {
     return null
   }
 
   return {
-    reply: decodeJsonishString(replyMatch[1]).trim() || '已解析模型返回的网页素材结果。',
+    reply: decodeJsonishString(reply).trim() || '已解析模型返回的网页素材结果。',
     actions: [{
       type: 'create_html_asset',
-      html: decodeJsonishString(htmlMatch[1]).trim(),
-      name: decodeJsonishString(nameMatch[1]).trim() || 'HTML 素材',
-      width: Math.max(64, Math.min(4096, Math.round(Number(widthMatch[1])))),
-      height: Math.max(64, Math.min(4096, Math.round(Number(heightMatch[1])))),
-      duration: Math.max(0.2, Number(durationMatch[1])),
-      ...(startTimeMatch ? { startTime: Math.max(0, Number(startTimeMatch[1])) } : {}),
-      ...(trackIndexMatch ? { trackIndex: Math.max(0, Math.floor(Number(trackIndexMatch[1]))) } : {}),
+      html: decodeJsonishString(html).trim(),
+      name: decodeJsonishString(name).trim() || 'HTML 素材',
+      width: Math.max(64, Math.min(4096, Math.round(width))),
+      height: Math.max(64, Math.min(4096, Math.round(height))),
+      duration: Math.max(0.2, duration),
+      ...(startTime !== null ? { startTime: Math.max(0, startTime) } : {}),
+      ...(trackIndex !== null ? { trackIndex: Math.max(0, Math.floor(trackIndex)) } : {}),
     }],
     referencedClipIds: [],
     rawContent: content,

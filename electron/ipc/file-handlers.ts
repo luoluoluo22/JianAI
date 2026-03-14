@@ -76,6 +76,13 @@ function pathToFileUrl(filePath: string): string {
   return normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`
 }
 
+function isPathInsideRoot(candidatePath: string, rootPath: string): boolean {
+  const resolvedCandidate = path.resolve(candidatePath)
+  const resolvedRoot = path.resolve(rootPath)
+  const relative = path.relative(resolvedRoot, resolvedCandidate)
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
 function sanitizeBaseName(name: string): string {
   const trimmed = name.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, '').replace(/\s+/g, ' ')
   return trimmed || 'html-asset'
@@ -421,6 +428,37 @@ async function createHtmlAssetImage(
   }
 }
 
+function deleteManagedProjectFiles(filePaths: string[]): { deleted: string[]; skipped: string[] } {
+  const assetsRoot = getProjectAssetsPath()
+  const deleted: string[] = []
+  const skipped: string[] = []
+  const uniquePaths = Array.from(new Set(filePaths.filter(Boolean).map((filePath) => path.resolve(filePath))))
+
+  for (const filePath of uniquePaths) {
+    try {
+      if (!isPathInsideRoot(filePath, assetsRoot)) {
+        skipped.push(filePath)
+        continue
+      }
+      if (!fs.existsSync(filePath)) {
+        continue
+      }
+      const stats = fs.statSync(filePath)
+      if (!stats.isFile()) {
+        skipped.push(filePath)
+        continue
+      }
+      fs.unlinkSync(filePath)
+      deleted.push(filePath)
+    } catch (error) {
+      logger.warn(`[project-assets] failed to delete managed file: ${filePath} ${error}`)
+      skipped.push(filePath)
+    }
+  }
+
+  return { deleted, skipped }
+}
+
 export function registerFileHandlers(): void {
   ipcMain.handle('open-ltx-api-key-page', async () => {
     const { shell } = await import('electron')
@@ -664,6 +702,13 @@ export function registerFileHandlers(): void {
     payload: { source: string; name?: string },
   ) => {
     return importImageAsset(projectId, payload)
+  })
+
+  ipcMain.handle('delete-managed-project-files', async (
+    _event,
+    filePaths: string[],
+  ) => {
+    return deleteManagedProjectFiles(filePaths)
   })
 
   ipcMain.handle('open-project-assets-path-change-dialog', async () => {

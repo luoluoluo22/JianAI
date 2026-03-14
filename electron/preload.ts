@@ -63,6 +63,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     payload: { source: string; name?: string },
   ): Promise<{ success: boolean; path?: string; url?: string; error?: string }> =>
     ipcRenderer.invoke('import-image-to-project-assets', projectId, payload),
+  deleteManagedProjectFiles: (filePaths: string[]): Promise<{ deleted: string[]; skipped: string[] }> =>
+    ipcRenderer.invoke('delete-managed-project-files', filePaths),
   getProjectAssetsPath: (): Promise<string> =>
     ipcRenderer.invoke('get-project-assets-path'),
   openProjectAssetsPathChangeDialog: (): Promise<{ success: boolean; path?: string; error?: string }> =>

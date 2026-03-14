@@ -117,6 +117,38 @@ function isRealPath(p: string): boolean {
   return p.includes('/') || p.includes('\\') || /^[A-Za-z]:/.test(p)
 }
 
+function collectAssetManagedPaths(asset: Asset): string[] {
+  const paths = new Set<string>()
+  if (asset.managedPaths) {
+    asset.managedPaths.forEach((value) => {
+      if (value && isRealPath(value)) paths.add(value)
+    })
+  }
+  if (asset.path && isRealPath(asset.path)) {
+    paths.add(asset.path)
+  }
+  asset.takes?.forEach((take) => {
+    if (take.path && isRealPath(take.path)) {
+      paths.add(take.path)
+    }
+    take.managedPaths?.forEach((value) => {
+      if (value && isRealPath(value)) paths.add(value)
+    })
+  })
+  return Array.from(paths)
+}
+
+function collectReferencedPaths(projects: Project[], excludedAssetId?: string): Set<string> {
+  const referenced = new Set<string>()
+  projects.forEach((project) => {
+    project.assets.forEach((asset) => {
+      if (asset.id === excludedAssetId) return
+      collectAssetManagedPaths(asset).forEach((filePath) => referenced.add(filePath))
+    })
+  })
+  return referenced
+}
+
 // Recover broken blob URLs by rebuilding file:// URLs from stored paths
 function recoverAssetUrls(project: Project): Project {
   let changed = false
@@ -251,11 +283,25 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, [])
   
   const deleteAsset = useCallback((projectId: string, assetId: string) => {
-    setProjects(prev => prev.map(p => 
-      p.id === projectId 
-        ? { ...p, assets: p.assets.filter(a => a.id !== assetId), updatedAt: Date.now() } 
-        : p
-    ))
+    let orphanedPaths: string[] = []
+
+    setProjects(prev => {
+      const project = prev.find(p => p.id === projectId)
+      const asset = project?.assets.find(a => a.id === assetId)
+      const orphanCandidates = asset ? collectAssetManagedPaths(asset) : []
+      const nextProjects = prev.map(p =>
+        p.id === projectId
+          ? { ...p, assets: p.assets.filter(a => a.id !== assetId), updatedAt: Date.now() }
+          : p
+      )
+      const referencedPaths = collectReferencedPaths(nextProjects)
+      orphanedPaths = orphanCandidates.filter((filePath) => !referencedPaths.has(filePath))
+      return nextProjects
+    })
+
+    if (orphanedPaths.length > 0) {
+      void window.electronAPI?.deleteManagedProjectFiles(orphanedPaths)
+    }
   }, [])
   
   const updateAsset = useCallback((projectId: string, assetId: string, updates: Partial<Asset>) => {
