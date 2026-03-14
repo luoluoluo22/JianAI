@@ -85,6 +85,24 @@ function readLegacyEditingAgentLlmSettings(): EditingAgentLlmSettings | null {
   }
 }
 
+async function readRendererEditingAgentLlmSettings(): Promise<EditingAgentLlmSettings | null> {
+  try {
+    const raw = await window.electronAPI.getRendererSettings()
+    const parsed = raw.editingAgentLlm as Partial<EditingAgentLlmSettings> | undefined
+    if (!parsed) {
+      return null
+    }
+    return {
+      enabled: parsed.enabled ?? DEFAULT_APP_SETTINGS.editingAgentLlm.enabled,
+      baseUrl: parsed.baseUrl ?? DEFAULT_APP_SETTINGS.editingAgentLlm.baseUrl,
+      apiKey: parsed.apiKey ?? DEFAULT_APP_SETTINGS.editingAgentLlm.apiKey,
+      model: parsed.model ?? DEFAULT_APP_SETTINGS.editingAgentLlm.model,
+    }
+  } catch {
+    return null
+  }
+}
+
 function shouldMigrateLegacyEditingAgentLlm(
   backendValue: EditingAgentLlmSettings,
   legacyValue: EditingAgentLlmSettings | null,
@@ -266,11 +284,14 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshSettings = useCallback(async () => {
-    const response = await backendFetch('/api/settings')
-    if (!response.ok) {
-      throw new Error(`Settings fetch failed with status ${response.status}`)
+    let data: Partial<AppSettings> = {}
+    if (!backendDisabled) {
+      const response = await backendFetch('/api/settings')
+      if (!response.ok) {
+        throw new Error(`Settings fetch failed with status ${response.status}`)
+      }
+      data = await response.json()
     }
-    const data = await response.json()
     const cloudflareSettings = readCloudflareImageSettings()
     const normalized = normalizeAppSettings({
       ...data,
@@ -278,13 +299,19 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       hasCloudflareApiToken: Boolean(cloudflareSettings.apiToken.trim()),
     })
     const legacyEditingAgentLlm = readLegacyEditingAgentLlmSettings()
-    const nextSettings = shouldMigrateLegacyEditingAgentLlm(normalized.editingAgentLlm, legacyEditingAgentLlm)
-      ? { ...normalized, editingAgentLlm: legacyEditingAgentLlm }
+    const rendererEditingAgentLlm = await readRendererEditingAgentLlmSettings()
+    const migratedEditingAgentLlm = shouldMigrateLegacyEditingAgentLlm(normalized.editingAgentLlm, legacyEditingAgentLlm)
+      ? legacyEditingAgentLlm
+      : shouldMigrateLegacyEditingAgentLlm(normalized.editingAgentLlm, rendererEditingAgentLlm)
+        ? rendererEditingAgentLlm
+        : null
+    const nextSettings = migratedEditingAgentLlm
+      ? { ...normalized, editingAgentLlm: migratedEditingAgentLlm }
       : normalized
 
     setSettings(nextSettings)
     setIsLoaded(true)
-  }, [])
+  }, [backendDisabled])
 
   useEffect(() => {
     if (backendDisabled) {
@@ -315,12 +342,16 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [backendProcessStatus, isLoaded, refreshSettings])
 
   useEffect(() => {
-    if (backendDisabled) {
-      return
-    }
-    if (!isLoaded || backendProcessStatus !== 'alive') return
+    if (!isLoaded) return
     const syncTimer = setTimeout(async () => {
       try {
+        await window.electronAPI.saveRendererSettings({
+          editingAgentLlm: settings.editingAgentLlm,
+        })
+
+        if (backendDisabled || backendProcessStatus !== 'alive') {
+          return
+        }
         const {
           hasLtxApiKey: _a,
           hasFalApiKey: _b,
@@ -340,7 +371,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       }
     }, 150)
     return () => clearTimeout(syncTimer)
-  }, [backendProcessStatus, isLoaded, settings])
+  }, [backendDisabled, backendProcessStatus, isLoaded, settings])
 
   const updateSettings = useCallback((patch: Partial<AppSettings> | ((prev: AppSettings) => AppSettings)) => {
     if (typeof patch === 'function') {

@@ -24,12 +24,45 @@ interface ConversationMessage {
   text: string
 }
 
-function buildChatCompletionsUrl(baseUrl: string): string {
+export function buildChatCompletionsUrl(baseUrl: string): string {
   const trimmed = baseUrl.trim().replace(/\/+$/, '')
+  if (trimmed.endsWith('/chat/completions')) {
+    return trimmed
+  }
   if (trimmed.endsWith('/v1')) {
     return `${trimmed}/chat/completions`
   }
   return `${trimmed}/v1/chat/completions`
+}
+
+export function buildLlmRequestPayload(
+  input: string,
+  context: EditingAgentContext,
+  config: EditingAgentLlmConfig,
+  conversation: ConversationMessage[],
+  extraSystemMessages: string[] = [],
+): {
+  model: string
+  temperature: number
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
+} {
+  return {
+    model: config.model,
+    temperature: 0.1,
+    messages: [
+      { role: 'system', content: buildSystemPrompt() },
+      {
+        role: 'system',
+        content: `当前时间线快照如下，请严格基于这些 clip id 和字段做决策：\n${buildTimelineSnapshot(context)}`,
+      },
+      ...extraSystemMessages.map((content) => ({ role: 'system' as const, content })),
+      ...conversation.slice(-6).map((message) => ({
+        role: message.role,
+        content: message.text,
+      })),
+      { role: 'user' as const, content: input },
+    ],
+  }
 }
 
 function getSortedClips(context: EditingAgentContext) {
@@ -103,10 +136,11 @@ function buildSystemPrompt(): string {
     '你的任务是把用户中文指令转换成严格 JSON，不能输出 markdown，不能输出解释文字。',
     '你只能返回一个 JSON 对象，格式如下：',
     '{"reply":"给用户看的简短中文回复","actions":[...],"referencedClipIds":["clip-id"]}',
-    'actions 只允许以下 type：select_clips, move_clips, delete_clips, duplicate_clips, add_asset_to_timeline, insert_asset_after_clip, insert_asset_before_clip, set_duration, set_speed, set_muted, set_volume, set_transition, trim_clip, split_clip, add_text。',
+    'actions 只允许以下 type：select_clips, move_clips, delete_clips, duplicate_clips, add_asset_to_timeline, insert_asset_after_clip, insert_asset_before_clip, create_html_asset, set_duration, set_speed, set_muted, set_volume, set_transition, trim_clip, split_clip, add_text。',
     '每个 action 必须使用时间线快照里真实存在的 clip id；不要自己编造 clip id。',
     '如果要把素材区资源放到时间线，必须使用 add_asset_to_timeline / insert_asset_after_clip / insert_asset_before_clip，并填写真实 assetId。',
     '如果用户只是询问或总结，actions 返回空数组。',
+    '如果用户明确要求新建海报、卡片、字幕板、信息图、封面或其他静态素材，并且提到 HTML、CSS、网页或代码生成，可以使用 create_html_asset。',
     '先尽量根据默认规则完成编辑，只有在默认规则仍无法唯一确定时才要求澄清。',
     '默认规则：assets 数组顺序就是当前素材区可见顺序；“第一张图片/第二个视频”按 assets 中同类型素材的顺序理解。',
     '默认规则：如果用户说“素材库/资源区/图片/视频/音频”并伴随“放到/插入/添加到时间线”等措辞，优先解析为 assetId，而不是时间线上的同名 clip。',
@@ -117,6 +151,7 @@ function buildSystemPrompt(): string {
     'add_text 不需要 clipIds，字段为 text, startTime, duration。',
     'add_asset_to_timeline 字段为 assetId, startTime, trackIndex(可选)。',
     'insert_asset_after_clip / insert_asset_before_clip 字段为 assetId, clipId, trackIndex(可选)。',
+    'create_html_asset 字段为 html, name, width, height, duration，另可选 startTime, trackIndex, insertAfterClipId, insertBeforeClipId。它会先生成一个新素材，再按可选位置放入时间线。',
     'move_clips 只能二选一使用 deltaSeconds 或 absoluteStartTime。',
     'set_transition 字段必须是 clipIds, edge(in|out), enabled, duration。',
     'trim_clip 字段为 clipIds, trimInSeconds(可选), trimOutSeconds(可选)。',
@@ -143,53 +178,65 @@ async function requestLlmResult(
   conversation: ConversationMessage[],
   extraSystemMessages: string[] = [],
 ): Promise<EditingAgentLlmResult> {
-  const response = await fetch(buildChatCompletionsUrl(config.baseUrl), {
+  const resolvedUrl = buildChatCompletionsUrl(config.baseUrl)
+  const response = await fetch(resolvedUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`,
     },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: 0.1,
-      messages: [
-        { role: 'system', content: buildSystemPrompt() },
-        {
-          role: 'system',
-          content: `当前时间线快照如下，请严格基于这些 clip id 和字段做决策：\n${buildTimelineSnapshot(context)}`,
-        },
-        ...extraSystemMessages.map((content) => ({ role: 'system' as const, content })),
-        ...conversation.slice(-6).map((message) => ({
-          role: message.role,
-          content: message.text,
-        })),
-        { role: 'user', content: input },
-      ],
-    }),
+    body: JSON.stringify(buildLlmRequestPayload(input, context, config, conversation, extraSystemMessages)),
   })
 
   if (!response.ok) {
-    throw new Error(`LLM request failed with status ${response.status}`)
+    const detail = (await response.text()).trim()
+    if (response.status === 429) {
+      throw new Error(detail || `LLM request failed with status 429 (rate limited)`)
+    }
+    throw new Error(detail || `LLM request failed with status ${response.status}`)
   }
 
-  const data = await response.json() as {
+  const rawText = await response.text()
+  if (!rawText.trim()) {
+    const contentType = response.headers.get('content-type') ?? 'unknown'
+    throw new Error(`LLM response body was empty (url=${resolvedUrl}, model=${config.model}, content-type=${contentType})`)
+  }
+
+  let data: {
     choices?: Array<{
       message?: {
         content?: string
       }
     }>
   }
+  try {
+    data = JSON.parse(rawText) as {
+      choices?: Array<{
+        message?: {
+          content?: string
+        }
+      }>
+    }
+  } catch {
+    const preview = rawText.slice(0, 300)
+    throw new Error(`LLM response was not valid JSON (url=${resolvedUrl}, model=${config.model}, preview=${preview})`)
+  }
+
   const content = data.choices?.[0]?.message?.content
   if (!content) {
     throw new Error('LLM response did not include message content')
   }
 
-  const jsonText = extractJsonText(content)
-  const parsed = JSON.parse(jsonText) as unknown
-  return {
-    ...sanitizeAgentResult(parsed, context),
-    rawContent: content,
-    jsonText,
+  try {
+    const jsonText = extractJsonText(content)
+    const parsed = JSON.parse(jsonText) as unknown
+    return {
+      ...sanitizeAgentResult(parsed, context),
+      rawContent: content,
+      jsonText,
+    }
+  } catch {
+    return buildNonJsonResult(content)
   }
 }
 
@@ -243,6 +290,102 @@ function extractJsonText(content: string): string {
   }
 
   return candidate
+}
+
+function guessImageName(source: string, explicitName?: string): string | undefined {
+  if (explicitName?.trim()) return explicitName.trim()
+  if (source.startsWith('data:image/')) return 'AI 生成图片'
+  const normalized = source.replace(/[?#].*$/, '')
+  const fileName = normalized.split(/[\\/]/).pop()?.trim()
+  if (!fileName) return undefined
+  return fileName.replace(/\.(png|jpg|jpeg|webp|gif)$/i, '')
+}
+
+function normalizeImageSource(source: string): string {
+  return source
+    .trim()
+    .replace(/\\&/g, '&')
+    .replace(/&amp;/gi, '&')
+}
+
+function getUrlVariantScore(source: string): number {
+  if (!/^https?:\/\//i.test(source)) return 100
+  const lower = source.toLowerCase()
+  if (lower.includes('image_raw_b')) return 0
+  if (lower.includes('downsize_watermark')) return 1
+  if (lower.includes('image_dld_watermark')) return 2
+  if (lower.includes('image_pre_watermark')) return 3
+  if (lower.includes('img_pre_mark')) return 4
+  if (lower.includes('hcg_watermark')) return 5
+  return 10
+}
+
+function buildImageDedupKey(source: string): string {
+  if (!/^https?:\/\//i.test(source)) return source
+  try {
+    const url = new URL(source)
+    const lowerPath = url.pathname.toLowerCase()
+    const rcGenMatch = lowerPath.match(/\/rc_gen_image\/([^/]+)\./)
+    if (rcGenMatch) {
+      return `${url.host}/rc_gen_image/${rcGenMatch[1]}`
+    }
+    return `${url.host}${lowerPath}`
+  } catch {
+    return source
+  }
+}
+
+function extractImageActionsFromText(content: string): EditingAgentAction[] {
+  const candidates = new Map<string, { source: string; name?: string; score: number }>()
+
+  const push = (source: string, name?: string) => {
+    const normalized = normalizeImageSource(source)
+    if (!normalized) return
+    const key = buildImageDedupKey(normalized)
+    const score = getUrlVariantScore(normalized)
+    const existing = candidates.get(key)
+    if (existing && existing.score <= score) return
+    candidates.set(key, {
+      source: normalized,
+      name: guessImageName(normalized, name),
+      score,
+    })
+  }
+
+  for (const match of content.matchAll(/!\[([^\]]*)\]\((data:image\/[^)]+|https?:\/\/[^)\s]+|[A-Za-z]:\\[^)]+)\)/gi)) {
+    push(match[2], match[1])
+  }
+  for (const match of content.matchAll(/<img[^>]+src=["'](data:image\/[^"']+|https?:\/\/[^"'\s>]+|[A-Za-z]:\\[^"']+)["'][^>]*>/gi)) {
+    push(match[1])
+  }
+  for (const match of content.matchAll(/(data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+)/gi)) {
+    push(match[1])
+  }
+  for (const match of content.matchAll(/(https?:\/\/[^\s"'）)]+(?:png|jpg|jpeg|webp|gif|heic)(?:\?[^\s"'）)]*)?)/gi)) {
+    push(match[1])
+  }
+  for (const match of content.matchAll(/([A-Za-z]:\\[^\n\r"'<>|?*]+?\.(?:png|jpg|jpeg|webp|gif))/gi)) {
+    push(match[1])
+  }
+
+  return Array.from(candidates.values())
+    .sort((left, right) => left.score - right.score)
+    .slice(0, 4)
+    .map(({ source, name }) => ({
+      type: 'import_image_asset',
+      source,
+      ...(name ? { name } : {}),
+    }))
+}
+
+function buildNonJsonResult(content: string): EditingAgentLlmResult {
+  return {
+    reply: content.trim() || '模型返回了文本结果。',
+    actions: extractImageActionsFromText(content),
+    referencedClipIds: [],
+    rawContent: content,
+    jsonText: '',
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -326,6 +469,34 @@ function sanitizeAction(action: unknown, context: EditingAgentContext): EditingA
         type: 'set_duration',
         clipIds: sanitizeClipIds(action.clipIds, context),
         duration: Math.max(0.1, duration),
+      }
+    }
+    case 'create_html_asset': {
+      if (typeof action.html !== 'string' || typeof action.name !== 'string') return null
+      const width = sanitizeNumber(action.width)
+      const height = sanitizeNumber(action.height)
+      const duration = sanitizeNumber(action.duration)
+      if (width === null || height === null || duration === null) return null
+      if (action.html.trim().length === 0 || action.html.length > 120_000) return null
+      const startTime = sanitizeNumber(action.startTime)
+      const trackIndex = sanitizeNumber(action.trackIndex)
+      const insertAfterClipId = typeof action.insertAfterClipId === 'string' ? action.insertAfterClipId : null
+      const insertBeforeClipId = typeof action.insertBeforeClipId === 'string' ? action.insertBeforeClipId : null
+      const knownClipIds = new Set(context.clips.map((clip) => clip.id))
+      if (insertAfterClipId && !knownClipIds.has(insertAfterClipId)) return null
+      if (insertBeforeClipId && !knownClipIds.has(insertBeforeClipId)) return null
+      if (insertAfterClipId && insertBeforeClipId) return null
+      return {
+        type: 'create_html_asset',
+        html: action.html.trim(),
+        name: action.name.trim() || 'HTML 素材',
+        width: Math.max(64, Math.min(4096, Math.round(width))),
+        height: Math.max(64, Math.min(4096, Math.round(height))),
+        duration: Math.max(0.2, duration),
+        ...(startTime !== null ? { startTime: Math.max(0, startTime) } : {}),
+        ...(trackIndex !== null ? { trackIndex: Math.max(0, Math.floor(trackIndex)) } : {}),
+        ...(insertAfterClipId ? { insertAfterClipId } : {}),
+        ...(insertBeforeClipId ? { insertBeforeClipId } : {}),
       }
     }
     case 'set_speed': {

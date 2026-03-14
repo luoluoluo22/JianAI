@@ -48,9 +48,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Paths
   getDownloadsPath: (): Promise<string> => ipcRenderer.invoke('get-downloads-path'),
+  getRendererSettings: (): Promise<Record<string, unknown>> => ipcRenderer.invoke('get-renderer-settings'),
+  saveRendererSettings: (patch: Record<string, unknown>): Promise<Record<string, unknown>> => ipcRenderer.invoke('save-renderer-settings', patch),
   // Project assets
   copyToProjectAssets: (srcPath: string, projectId: string): Promise<{ success: boolean; path?: string; url?: string; error?: string }> =>
     ipcRenderer.invoke('copy-to-project-assets', srcPath, projectId),
+  createHtmlAsset: (
+    projectId: string,
+    payload: { html: string; width: number; height: number; name: string },
+  ): Promise<{ success: boolean; path?: string; url?: string; htmlPath?: string; width?: number; height?: number; error?: string }> =>
+    ipcRenderer.invoke('create-html-asset', projectId, payload),
+  importImageToProjectAssets: (
+    projectId: string,
+    payload: { source: string; name?: string },
+  ): Promise<{ success: boolean; path?: string; url?: string; error?: string }> =>
+    ipcRenderer.invoke('import-image-to-project-assets', projectId, payload),
   getProjectAssetsPath: (): Promise<string> =>
     ipcRenderer.invoke('get-project-assets-path'),
   openProjectAssetsPathChangeDialog: (): Promise<{ success: boolean; path?: string; error?: string }> =>
@@ -178,7 +190,11 @@ declare global {
       openLogFolder: () => Promise<boolean>
       getResourcePath: () => Promise<string | null>
       getDownloadsPath: () => Promise<string>
+      getRendererSettings: () => Promise<Record<string, unknown>>
+      saveRendererSettings: (patch: Record<string, unknown>) => Promise<Record<string, unknown>>
       copyToProjectAssets: (srcPath: string, projectId: string) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>
+      createHtmlAsset: (projectId: string, payload: { html: string; width: number; height: number; name: string }) => Promise<{ success: boolean; path?: string; url?: string; htmlPath?: string; width?: number; height?: number; error?: string }>
+      importImageToProjectAssets: (projectId: string, payload: { source: string; name?: string }) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>
       getProjectAssetsPath: () => Promise<string>
       openProjectAssetsPathChangeDialog: () => Promise<{ success: boolean; path?: string; error?: string }>
       showSaveDialog: (options: { title?: string; defaultPath?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<string | null>

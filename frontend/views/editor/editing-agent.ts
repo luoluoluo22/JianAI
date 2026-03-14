@@ -40,6 +40,8 @@ export type EditingAgentAction =
   | { type: 'add_asset_to_timeline'; assetId: string; trackIndex?: number; startTime?: number }
   | { type: 'insert_asset_after_clip'; assetId: string; clipId: string; trackIndex?: number }
   | { type: 'insert_asset_before_clip'; assetId: string; clipId: string; trackIndex?: number }
+  | { type: 'import_image_asset'; source: string; name?: string }
+  | { type: 'create_html_asset'; html: string; name: string; width: number; height: number; duration: number; startTime?: number; trackIndex?: number; insertAfterClipId?: string; insertBeforeClipId?: string }
   | { type: 'set_duration'; clipIds: string[]; duration: number }
   | { type: 'set_speed'; clipIds: string[]; speed: number }
   | { type: 'set_muted'; clipIds: string[]; muted: boolean }
@@ -949,6 +951,14 @@ export function applyEditingAgentActions(
         clips = resolveOverlaps([...clips, newClip], new Set([newClip.id]))
         selectedClipIds = new Set([newClip.id])
         summaries.push(`已添加标题“${action.text}”。`)
+        break
+      }
+      case 'create_html_asset': {
+        summaries.push(`已准备生成 HTML 素材“${action.name}”。`)
+        break
+      }
+      case 'import_image_asset': {
+        summaries.push(`已准备导入图片素材“${action.name || '未命名图片'}”。`)
         break
       }
     }

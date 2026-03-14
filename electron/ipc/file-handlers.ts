@@ -1,6 +1,8 @@
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import http from 'http'
+import https from 'https'
 import { getAllowedRoots } from '../config'
 import { logger } from '../logger'
 import { getMainWindow } from '../window'
@@ -61,6 +63,259 @@ function searchDirectoryForFiles(dir: string, filenames: string[]): Record<strin
 
   walk(dir, 0)
   return results
+}
+
+function pathToFileUrl(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/')
+  return normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`
+}
+
+function sanitizeBaseName(name: string): string {
+  const trimmed = name.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, '').replace(/\s+/g, ' ')
+  return trimmed || 'html-asset'
+}
+
+function mimeTypeToExtension(mimeType: string): string {
+  const normalized = mimeType.toLowerCase()
+  if (normalized.includes('png')) return '.png'
+  if (normalized.includes('jpeg') || normalized.includes('jpg')) return '.jpg'
+  if (normalized.includes('webp')) return '.webp'
+  if (normalized.includes('gif')) return '.gif'
+  return '.png'
+}
+
+function normalizeRemoteImageUrl(source: string): string {
+  return source.trim().replace(/\\&/g, '&').replace(/&amp;/gi, '&')
+}
+
+async function downloadRemoteImage(source: string): Promise<{ buffer: Buffer; contentType: string }> {
+  const normalizedSource = normalizeRemoteImageUrl(source)
+  const target = new URL(normalizedSource)
+  const client = target.protocol === 'http:' ? http : https
+
+  return await new Promise((resolve, reject) => {
+    const request = client.get(normalizedSource, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) JianAI/1.0',
+        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        'Referer': 'https://www.doubao.com/',
+      },
+    }, (response) => {
+      const statusCode = response.statusCode ?? 0
+      const location = response.headers.location
+      if (statusCode >= 300 && statusCode < 400 && location) {
+        response.resume()
+        const redirectedUrl = new URL(location, normalizedSource).toString()
+        downloadRemoteImage(redirectedUrl).then(resolve).catch(reject)
+        return
+      }
+      if (statusCode < 200 || statusCode >= 300) {
+        response.resume()
+        reject(new Error(`Image fetch failed with status ${statusCode}.`))
+        return
+      }
+
+      const chunks: Buffer[] = []
+      response.on('data', (chunk) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+      })
+      response.on('end', () => {
+        resolve({
+          buffer: Buffer.concat(chunks),
+          contentType: response.headers['content-type'] ?? 'image/png',
+        })
+      })
+      response.on('error', reject)
+    })
+
+    request.on('error', reject)
+  })
+}
+
+async function importImageAsset(
+  projectId: string,
+  payload: { source: string; name?: string },
+): Promise<{ success: true; path: string; url: string } | { success: false; error: string }> {
+  const source = payload.source.trim()
+  if (!projectId.trim() || !source) {
+    return { success: false, error: 'Missing image import parameters.' }
+  }
+
+  const assetsRoot = getProjectAssetsPath()
+  const destDir = path.join(assetsRoot, projectId)
+  fs.mkdirSync(destDir, { recursive: true })
+  const baseName = sanitizeBaseName(payload.name || 'imported-image')
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+  try {
+    if (/^data:image\//i.test(source)) {
+      const match = source.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i)
+      if (!match) {
+        return { success: false, error: 'Unsupported data URI image format.' }
+      }
+      const ext = mimeTypeToExtension(match[1])
+      const destPath = path.join(destDir, `${baseName}-${stamp}${ext}`)
+      fs.writeFileSync(destPath, Buffer.from(match[2], 'base64'))
+      return { success: true, path: destPath, url: pathToFileUrl(destPath) }
+    }
+
+    if (/^https?:\/\//i.test(source)) {
+      const normalizedSource = normalizeRemoteImageUrl(source)
+      const { buffer, contentType } = await downloadRemoteImage(normalizedSource)
+      const extFromUrl = path.extname(new URL(normalizedSource).pathname)
+      const ext = extFromUrl || mimeTypeToExtension(contentType)
+      const destPath = path.join(destDir, `${baseName}-${stamp}${ext}`)
+      fs.writeFileSync(destPath, buffer)
+      return { success: true, path: destPath, url: pathToFileUrl(destPath) }
+    }
+
+    const resolvedSrc = validatePath(source, getAllowedRoots())
+    const ext = path.extname(resolvedSrc) || '.png'
+    const destPath = path.join(destDir, `${baseName}-${stamp}${ext}`)
+    fs.copyFileSync(resolvedSrc, destPath)
+    return { success: true, path: destPath, url: pathToFileUrl(destPath) }
+  } catch (error) {
+    logger.error(`[image-import] failed: ${source} ${error}`)
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+function wrapHtmlDocument(html: string, width: number, height: number): string {
+  if (/<html[\s>]/i.test(html) || /<!doctype/i.test(html)) {
+    return html
+  }
+
+  return `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      html, body {
+        margin: 0;
+        width: ${width}px;
+        height: ${height}px;
+        overflow: hidden;
+        background: transparent;
+      }
+      body {
+        position: relative;
+      }
+    </style>
+  </head>
+  <body>${html}</body>
+</html>`
+}
+
+async function waitForHtmlRender(window: BrowserWindow): Promise<void> {
+  await window.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))
+      }
+      const timeout = setTimeout(finish, 3000)
+      const fontReady = document.fonts?.ready ?? Promise.resolve()
+      const imageReady = Array.from(document.images || []).map((img) => (
+        img.complete
+          ? Promise.resolve()
+          : new Promise((done) => {
+              img.addEventListener('load', done, { once: true })
+              img.addEventListener('error', done, { once: true })
+            })
+      ))
+      Promise.all([fontReady, ...imageReady])
+        .then(() => {
+          clearTimeout(timeout)
+          finish()
+        })
+        .catch(() => {
+          clearTimeout(timeout)
+          finish()
+        })
+    })
+  `, true)
+}
+
+async function createHtmlAssetImage(
+  projectId: string,
+  payload: {
+    html: string
+    width: number
+    height: number
+    name: string
+  },
+): Promise<{ success: true; path: string; url: string; htmlPath: string; width: number; height: number } | { success: false; error: string }> {
+  const width = Math.max(64, Math.min(4096, Math.round(payload.width)))
+  const height = Math.max(64, Math.min(4096, Math.round(payload.height)))
+  const html = payload.html.trim()
+  const name = sanitizeBaseName(payload.name || 'html-asset')
+
+  if (!projectId.trim()) {
+    return { success: false, error: 'Missing projectId.' }
+  }
+  if (!html) {
+    return { success: false, error: 'HTML content is empty.' }
+  }
+  if (html.length > 120_000) {
+    return { success: false, error: 'HTML content is too large.' }
+  }
+
+  const assetsRoot = getProjectAssetsPath()
+  const destDir = path.join(assetsRoot, projectId)
+  fs.mkdirSync(destDir, { recursive: true })
+
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const baseName = `${name}-${stamp}`
+  const pngPath = path.join(destDir, `${baseName}.png`)
+  const htmlPath = path.join(destDir, `${baseName}.html`)
+  const documentHtml = wrapHtmlDocument(html, width, height)
+
+  let renderWindow: BrowserWindow | null = null
+
+  try {
+    renderWindow = new BrowserWindow({
+      show: false,
+      width,
+      height,
+      useContentSize: true,
+      frame: false,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      backgroundColor: '#00000000',
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    })
+
+    await renderWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(documentHtml)}`)
+    await waitForHtmlRender(renderWindow)
+    const image = await renderWindow.webContents.capturePage({ x: 0, y: 0, width, height })
+    fs.writeFileSync(pngPath, image.toPNG())
+    fs.writeFileSync(htmlPath, documentHtml, 'utf-8')
+
+    return {
+      success: true,
+      path: pngPath,
+      url: pathToFileUrl(pngPath),
+      htmlPath,
+      width,
+      height,
+    }
+  } catch (error) {
+    logger.error(`[html-asset] failed: ${error}`)
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
+  } finally {
+    if (renderWindow && !renderWindow.isDestroyed()) {
+      renderWindow.destroy()
+    }
+  }
 }
 
 
@@ -286,6 +541,27 @@ export function registerFileHandlers(): void {
 
   ipcMain.handle('get-project-assets-path', async () => {
     return getProjectAssetsPath()
+  })
+
+  ipcMain.handle('create-html-asset', async (
+    _event,
+    projectId: string,
+    payload: {
+      html: string
+      width: number
+      height: number
+      name: string
+    },
+  ) => {
+    return createHtmlAssetImage(projectId, payload)
+  })
+
+  ipcMain.handle('import-image-to-project-assets', async (
+    _event,
+    projectId: string,
+    payload: { source: string; name?: string },
+  ) => {
+    return importImageAsset(projectId, payload)
   })
 
   ipcMain.handle('open-project-assets-path-change-dialog', async () => {

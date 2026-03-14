@@ -24,8 +24,26 @@ function clipSnapshot(clip: TimelineClip) {
   }
 }
 
+function summarizeAction(action: EditingAgentAction): string {
+  if (action.type === 'import_image_asset') {
+    return JSON.stringify({
+      ...action,
+      source: action.source.startsWith('data:image/')
+        ? `[data-uri length=${action.source.length}]`
+        : action.source,
+    })
+  }
+  if (action.type !== 'create_html_asset') {
+    return JSON.stringify(action)
+  }
+  return JSON.stringify({
+    ...action,
+    html: `[html length=${action.html.length}]`,
+  })
+}
+
 export function summarizeActions(actions: EditingAgentAction[]): string[] {
-  return actions.map((action) => JSON.stringify(action))
+  return actions.map(summarizeAction)
 }
 
 export function diffClips(before: TimelineClip[], after: TimelineClip[]): string[] {
@@ -91,6 +109,16 @@ export function buildRequestDebugEntry(
   }
 }
 
+export function buildLlmMessagePreview(
+  messages: Array<{ role: string; content: string }>,
+): Array<{ role: string; contentPreview: string; contentLength: number }> {
+  return messages.map((message) => ({
+    role: message.role,
+    contentPreview: message.content.slice(0, 400),
+    contentLength: message.content.length,
+  }))
+}
+
 export function buildInterpretationDebugEntry(
   phase: 'llm_result' | 'fallback_result',
   userText: string,
@@ -105,7 +133,7 @@ export function buildInterpretationDebugEntry(
     provider,
     details: {
       reply: interpretation.reply,
-      actions: interpretation.actions,
+      actions: summarizeActions(interpretation.actions),
       referencedClipIds: interpretation.referencedClipIds,
       ...extraDetails,
     },
@@ -127,7 +155,7 @@ export function buildApplyDebugEntry(
     provider,
     details: {
       reply: interpretation.reply,
-      actions: interpretation.actions,
+      actions: summarizeActions(interpretation.actions),
       applySummary,
       diffs: diffClips(beforeClips, afterClips),
       beforeClipCount: beforeClips.length,

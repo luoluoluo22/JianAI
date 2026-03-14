@@ -91,6 +91,26 @@ export function useEditorKeyboard(params: UseEditorKeyboardParams) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const targetElement = e.target instanceof HTMLElement ? e.target : null
+      const selectionText = window.getSelection?.()?.toString() ?? ''
+      const isNativeEditingRegion = Boolean(targetElement?.closest('[data-native-editing="true"]'))
+      if (
+        isNativeEditingRegion &&
+        (e.ctrlKey || e.metaKey) &&
+        !e.altKey &&
+        ['c', 'x', 'v'].includes(e.key.toLowerCase())
+      ) {
+        return
+      }
+      if (
+        selectionText.trim().length > 0 &&
+        (e.ctrlKey || e.metaKey) &&
+        !e.altKey &&
+        ['c', 'x'].includes(e.key.toLowerCase())
+      ) {
+        return
+      }
+
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (refs.isKbEditorOpenRef.current) return
 

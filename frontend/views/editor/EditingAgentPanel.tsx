@@ -11,10 +11,13 @@ import {
   interpretEditingAgentInput,
   summarizeAssetsForAgent,
   summarizeTimelineForAgent,
+  type EditingAgentAction,
   type EditingAgentContext,
   type PendingAgentIntent,
 } from './editing-agent'
 import {
+  buildChatCompletionsUrl,
+  buildLlmRequestPayload,
   DEFAULT_EDITING_AGENT_LLM_CONFIG,
   interpretEditingAgentWithLlm,
   type EditingAgentLlmResult,
@@ -24,6 +27,7 @@ import {
   buildApplyDebugEntry,
   buildErrorDebugEntry,
   buildInterpretationDebugEntry,
+  buildLlmMessagePreview,
   buildRequestDebugEntry,
   buildUiContextMenuDebugEntry,
   persistEditingAgentDebugEntry,
@@ -65,11 +69,13 @@ interface EditingAgentPanelProps {
   visibleAssets: Asset[]
   clips: TimelineClip[]
   tracks: Track[]
+  currentProjectId: string | null
   selectedAssetIds: Set<string>
   selectedClipIds: Set<string>
   currentTime: number
   rightPanelWidth: number
   pushUndo: () => void
+  addAsset: (projectId: string, asset: Omit<Asset, 'id' | 'createdAt'>) => Asset
   setClips: Dispatch<SetStateAction<TimelineClip[]>>
   setSelectedAssetIds: Dispatch<SetStateAction<Set<string>>>
   setSelectedClipIds: Dispatch<SetStateAction<Set<string>>>
@@ -108,11 +114,13 @@ export function EditingAgentPanel({
   visibleAssets,
   clips,
   tracks,
+  currentProjectId,
   selectedAssetIds,
   selectedClipIds,
   currentTime,
   rightPanelWidth,
   pushUndo,
+  addAsset,
   setClips,
   setSelectedAssetIds,
   setSelectedClipIds,
@@ -245,6 +253,107 @@ export function EditingAgentPanel({
 
   const effectiveReferenceTags = selectedReferenceTags
 
+  const materializeHtmlActions = async (actions: EditingAgentAction[]) => {
+    const executableActions: EditingAgentAction[] = []
+    const createdAssets: Asset[] = []
+    const createdSummaries: string[] = []
+
+    for (const action of actions) {
+      if (action.type === 'import_image_asset') {
+        if (!currentProjectId) {
+          throw new Error('当前项目未打开，无法导入图片素材。')
+        }
+        const result = await window.electronAPI.importImageToProjectAssets(currentProjectId, {
+          source: action.source,
+          name: action.name,
+        })
+        if (!result.success || !result.path || !result.url) {
+          throw new Error(result.error || '导入图片素材失败。')
+        }
+        const createdAsset = addAsset(currentProjectId, {
+          type: 'image',
+          path: result.path,
+          url: result.url,
+          prompt: action.name?.trim() || 'AI 图片',
+          resolution: 'imported',
+          duration: 5,
+          takes: [{
+            url: result.url,
+            path: result.path,
+            createdAt: Date.now(),
+          }],
+          activeTakeIndex: 0,
+        })
+        createdAssets.push(createdAsset)
+        createdSummaries.push(`已导入图片素材“${assetDisplayName(createdAsset)}”。`)
+        continue
+      }
+
+      if (action.type !== 'create_html_asset') {
+        executableActions.push(action)
+        continue
+      }
+
+      if (!currentProjectId) {
+        throw new Error('当前项目未打开，无法创建 HTML 素材。')
+      }
+
+      const result = await window.electronAPI.createHtmlAsset(currentProjectId, {
+        html: action.html,
+        width: action.width,
+        height: action.height,
+        name: action.name,
+      })
+
+      if (!result.success || !result.path || !result.url || !result.width || !result.height) {
+        throw new Error(result.error || '创建 HTML 素材失败。')
+      }
+
+      const createdAsset = addAsset(currentProjectId, {
+        type: 'image',
+        path: result.path,
+        url: result.url,
+        prompt: action.name.trim() || 'HTML 素材',
+        resolution: `${result.width}x${result.height}`,
+        duration: action.duration,
+      })
+
+      createdAssets.push(createdAsset)
+      createdSummaries.push(`已生成 HTML 素材“${assetDisplayName(createdAsset)}”。`)
+
+      if (action.insertAfterClipId) {
+        executableActions.push({
+          type: 'insert_asset_after_clip',
+          assetId: createdAsset.id,
+          clipId: action.insertAfterClipId,
+          ...(action.trackIndex !== undefined ? { trackIndex: action.trackIndex } : {}),
+        })
+        continue
+      }
+
+      if (action.insertBeforeClipId) {
+        executableActions.push({
+          type: 'insert_asset_before_clip',
+          assetId: createdAsset.id,
+          clipId: action.insertBeforeClipId,
+          ...(action.trackIndex !== undefined ? { trackIndex: action.trackIndex } : {}),
+        })
+        continue
+      }
+
+      if (action.startTime !== undefined || action.trackIndex !== undefined) {
+        executableActions.push({
+          type: 'add_asset_to_timeline',
+          assetId: createdAsset.id,
+          startTime: action.startTime ?? currentTime,
+          ...(action.trackIndex !== undefined ? { trackIndex: action.trackIndex } : {}),
+        })
+      }
+    }
+
+    return { executableActions, createdAssets, createdSummaries }
+  }
+
   const handleCreateSession = () => {
     setArchivedSessions((prev) => {
       const hasMeaningfulConversation = messages.some((message) => message.role === 'user')
@@ -304,8 +413,28 @@ export function EditingAgentPanel({
 
     try {
       const provider = llmConfig.enabled ? 'llm' : 'rule'
+      const llmPayload = llmConfig.enabled
+        ? buildLlmRequestPayload(effectiveText, context, llmConfig, messages)
+        : null
       await persistEditingAgentDebugEntry(buildRequestDebugEntry(effectiveText, provider, clips, {
         referenceTags: effectiveReferenceTags.map((tag) => ({ kind: tag.kind, entityId: tag.entityId, label: tag.label })),
+        llmConfig: llmConfig.enabled
+          ? {
+              enabled: llmConfig.enabled,
+              baseUrl: llmConfig.baseUrl,
+              resolvedUrl: buildChatCompletionsUrl(llmConfig.baseUrl),
+              model: llmConfig.model,
+              apiKeyPreview: llmConfig.apiKey ? `${llmConfig.apiKey.slice(0, 6)}...` : '',
+            }
+          : null,
+        llmRequest: llmPayload
+          ? {
+              model: llmPayload.model,
+              temperature: llmPayload.temperature,
+              messageCount: llmPayload.messages.length,
+              messages: buildLlmMessagePreview(llmPayload.messages),
+            }
+          : null,
       }))
 
       let interpretation
@@ -331,22 +460,35 @@ export function EditingAgentPanel({
           },
       ))
 
+      const { executableActions, createdAssets, createdSummaries } = await materializeHtmlActions(interpretation.actions)
+      const executionContext: EditingAgentContext = createdAssets.length > 0
+        ? {
+            ...context,
+            assets: [...createdAssets, ...context.assets],
+            visibleAssets: context.visibleAssets ? [...createdAssets, ...context.visibleAssets] : undefined,
+          }
+        : context
+
       let assistantText = interpretation.reply
-      if (interpretation.actions.length > 0) {
+      if (executableActions.length > 0) {
         pushUndo()
-        const applied = applyEditingAgentActions(context, interpretation.actions)
+        const applied = applyEditingAgentActions(executionContext, executableActions)
         setClips(applied.clips)
         setSelectedClipIds(applied.selectedClipIds)
         setPendingIntent(null)
+        const applySummary = [...createdSummaries, applied.summary].filter(Boolean).join('\n')
         await persistEditingAgentDebugEntry(buildApplyDebugEntry(
           effectiveText,
           provider,
           clips,
           applied.clips,
           interpretation,
-          applied.summary,
+          applySummary,
         ))
-        assistantText = `${interpretation.reply}\n\n${applied.summary}`
+        assistantText = `${interpretation.reply}\n\n${applySummary}`
+      } else if (createdSummaries.length > 0) {
+        setPendingIntent(null)
+        assistantText = `${interpretation.reply}\n\n${createdSummaries.join('\n')}`
       } else {
         const nextPendingIntent = buildPendingAgentIntent(effectiveText, context) ?? pendingResolution.pending
         setPendingIntent(nextPendingIntent)
@@ -377,22 +519,35 @@ export function EditingAgentPanel({
           sanitizedActions: summarizeActions(fallback.actions),
         },
       ))
+      const { executableActions, createdAssets, createdSummaries } = await materializeHtmlActions(fallback.actions)
+      const executionContext: EditingAgentContext = createdAssets.length > 0
+        ? {
+            ...context,
+            assets: [...createdAssets, ...context.assets],
+            visibleAssets: context.visibleAssets ? [...createdAssets, ...context.visibleAssets] : undefined,
+          }
+        : context
+
       let assistantText = `AI 调用失败，已回退到本地规则引擎。\n\n${fallback.reply}`
-      if (fallback.actions.length > 0) {
+      if (executableActions.length > 0) {
         pushUndo()
-        const applied = applyEditingAgentActions(context, fallback.actions)
+        const applied = applyEditingAgentActions(executionContext, executableActions)
         setClips(applied.clips)
         setSelectedClipIds(applied.selectedClipIds)
         setPendingIntent(null)
+        const applySummary = [...createdSummaries, applied.summary].filter(Boolean).join('\n')
         await persistEditingAgentDebugEntry(buildApplyDebugEntry(
           effectiveText,
           'rule',
           clips,
           applied.clips,
           fallback,
-          applied.summary,
+          applySummary,
         ))
-        assistantText = `${assistantText}\n\n${applied.summary}`
+        assistantText = `${assistantText}\n\n${applySummary}`
+      } else if (createdSummaries.length > 0) {
+        setPendingIntent(null)
+        assistantText = `${assistantText}\n\n${createdSummaries.join('\n')}`
       } else {
         const nextPendingIntent = buildPendingAgentIntent(effectiveText, context) ?? pendingResolution.pending
         setPendingIntent(nextPendingIntent)
@@ -571,6 +726,7 @@ export function EditingAgentPanel({
   return (
     <div
       className="bg-zinc-950 border-l border-zinc-800 flex flex-col"
+      data-native-editing="true"
       style={{ width: rightPanelWidth }}
       onContextMenu={(e) => {
         e.stopPropagation()
@@ -639,8 +795,9 @@ export function EditingAgentPanel({
               className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-emerald-500/50"
             />
           </div>
-          <div className="text-[11px] text-zinc-500">
-            当前默认值：`http://127.0.0.1:55555` / `deepseek-chat`
+          <div className="space-y-1 text-[11px] text-zinc-500">
+            <div>当前生效值：`{llmConfig.baseUrl || '未设置'}` / `{llmConfig.model || '未设置'}`</div>
+            <div>内置默认值：`http://127.0.0.1:55555` / `deepseek-chat`</div>
           </div>
         </div>
       )}

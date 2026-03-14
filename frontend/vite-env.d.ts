@@ -34,7 +34,11 @@ interface Window {
     openLogFolder: () => Promise<boolean>
     getResourcePath: () => Promise<string | null>
     getDownloadsPath: () => Promise<string>
+    getRendererSettings: () => Promise<Record<string, unknown>>
+    saveRendererSettings: (patch: Record<string, unknown>) => Promise<Record<string, unknown>>
     copyToProjectAssets: (srcPath: string, projectId: string) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>
+    createHtmlAsset: (projectId: string, payload: { html: string; width: number; height: number; name: string }) => Promise<{ success: boolean; path?: string; url?: string; htmlPath?: string; width?: number; height?: number; error?: string }>
+    importImageToProjectAssets: (projectId: string, payload: { source: string; name?: string }) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>
     getProjectAssetsPath: () => Promise<string>
     openProjectAssetsPathChangeDialog: () => Promise<{ success: boolean; path?: string; error?: string }>
     showSaveDialog: (options: { title?: string; defaultPath?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<string | null>

@@ -16,6 +16,32 @@ function getModelsPath(): string {
   return modelsPath
 }
 
+function getRendererSettingsPath(): string {
+  return path.join(app.getPath('userData'), 'renderer_settings.json')
+}
+
+function readRendererSettings(): Record<string, unknown> {
+  const settingsPath = getRendererSettingsPath()
+  try {
+    if (!fs.existsSync(settingsPath)) {
+      return {}
+    }
+    return JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
+function writeRendererSettings(patch: Record<string, unknown>): Record<string, unknown> {
+  const settingsPath = getRendererSettingsPath()
+  const nextValue = {
+    ...readRendererSettings(),
+    ...patch,
+  }
+  fs.writeFileSync(settingsPath, JSON.stringify(nextValue, null, 2), 'utf-8')
+  return nextValue
+}
+
 function getSetupStatus(settingsPath: string): { needsSetup: boolean; needsLicense: boolean } {
   if (!fs.existsSync(settingsPath)) {
     return { needsSetup: true, needsLicense: true }
@@ -92,6 +118,14 @@ export function registerAppHandlers(): void {
 
   ipcMain.handle('get-downloads-path', () => {
     return app.getPath('downloads')
+  })
+
+  ipcMain.handle('get-renderer-settings', () => {
+    return readRendererSettings()
+  })
+
+  ipcMain.handle('save-renderer-settings', (_event, patch: Record<string, unknown>) => {
+    return writeRendererSettings(patch)
   })
 
   ipcMain.handle('check-first-run', () => {

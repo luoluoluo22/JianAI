@@ -3933,11 +3933,13 @@ export function VideoEditor() {
             visibleAssets={filteredAssets}
             clips={clips}
             tracks={tracks}
+            currentProjectId={currentProjectId}
             selectedAssetIds={selectedAssetIds}
             selectedClipIds={selectedClipIds}
             currentTime={currentTime}
             rightPanelWidth={layout.rightPanelWidth}
             pushUndo={pushUndo}
+            addAsset={addAsset}
             setClips={setClips}
             setSelectedAssetIds={setSelectedAssetIds}
             setSelectedClipIds={setSelectedClipIds}
