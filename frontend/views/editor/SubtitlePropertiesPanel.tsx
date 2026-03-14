@@ -10,6 +10,7 @@ interface SubtitlePropertiesPanelProps {
   onResizeDragStart: (e: React.MouseEvent) => void
   updateSubtitle: (id: string, updates: Partial<SubtitleClip>) => void
   deleteSubtitle: (id: string) => void
+  showResizeHandle?: boolean
 }
 
 export function SubtitlePropertiesPanel({
@@ -19,17 +20,20 @@ export function SubtitlePropertiesPanel({
   onResizeDragStart,
   updateSubtitle,
   deleteSubtitle,
+  showResizeHandle = true,
 }: SubtitlePropertiesPanelProps) {
   const subStyle = { ...DEFAULT_SUBTITLE_STYLE, ...trackStyle, ...selectedSub.style }
 
   return (
     <>
-      <div
-        className="w-1 flex-shrink-0 cursor-col-resize bg-transparent hover:bg-amber-500/40 active:bg-amber-500/60 transition-colors relative group z-10"
-        onMouseDown={onResizeDragStart}
-      >
-        <div className="absolute inset-y-0 -left-1 -right-1" />
-      </div>
+      {showResizeHandle && (
+        <div
+          className="w-1 flex-shrink-0 cursor-col-resize bg-transparent hover:bg-amber-500/40 active:bg-amber-500/60 transition-colors relative group z-10"
+          onMouseDown={onResizeDragStart}
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1" />
+        </div>
+      )}
       <div className="flex-shrink-0 border-l border-zinc-800 bg-zinc-900 p-4 overflow-auto" style={{ width: rightPanelWidth }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-amber-400 flex items-center gap-2">

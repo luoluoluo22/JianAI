@@ -1716,8 +1716,14 @@ export function VideoEditor() {
     handleAddTimeline, handleDuplicateTimeline, handleResetLayout,
   }), [selectedClip, selectedClipIds, clips, tracks, subtitles, snapEnabled, showEffectsBrowser, showSourceMonitor, showPropertiesPanel, sourceAsset, activeTool, activeTimeline, timelines, handleInsertEdit, handleOverwriteEdit, kbLayout, canUseIcLora, handleICLoraClip])
 
-
+  
   // --- Render ---
+  const propertiesPanelWidth = showPropertiesPanel && showAgentPanel
+    ? Math.max(360, layout.rightPanelWidth)
+    : layout.rightPanelWidth
+  const agentPanelWidth = showPropertiesPanel && showAgentPanel
+    ? Math.max(340, Math.round(layout.rightPanelWidth * 0.9))
+    : layout.rightPanelWidth
   
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -1837,6 +1843,16 @@ export function VideoEditor() {
             </div>
           )}
           </div>
+          <button
+            onClick={() => setShowAgentPanel((prev) => !prev)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors ${
+              showAgentPanel ? 'bg-emerald-500 text-zinc-950' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+            }`}
+            title={showAgentPanel ? '隐藏智能助理' : '显示智能助理'}
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            智能助理
+          </button>
         </div>
       } />
       {/* Main Content */}
@@ -2408,25 +2424,6 @@ export function VideoEditor() {
               </button>
             </Tooltip>
 
-            <Tooltip content={showAgentPanel ? '隐藏智能助理' : '显示智能助理'} side="right">
-              <button
-                onClick={() => {
-                  setShowAgentPanel((prev) => {
-                    const next = !prev
-                    if (next) setShowPropertiesPanel(false)
-                    return next
-                  })
-                }}
-                className={`mt-2 p-1.5 rounded-lg transition-colors flex-shrink-0 group relative ${
-                  showAgentPanel ? 'bg-emerald-500 text-zinc-950' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                }`}
-              >
-                <MessageSquare className="h-4 w-4" />
-                <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-                  {showAgentPanel ? '隐藏助理' : '显示助理'}
-                </div>
-              </button>
-            </Tooltip>
           </div>
           
           {/* EFFECTS HIDDEN - Effects Browser panel hidden because effects are not applied during export */}
@@ -3930,7 +3927,73 @@ export function VideoEditor() {
             </button>
           </Tooltip>
         </div>
-        {showAgentPanel ? (
+        {showPropertiesPanel && (
+          <>
+            {selectedSubtitleId && selectedClipIds.size === 0 && (() => {
+              const selectedSub = subtitles.find(s => s.id === selectedSubtitleId)
+              if (!selectedSub) return null
+              const trackStyle = tracks[selectedSub.trackIndex]?.subtitleStyle || {}
+              return (
+                <SubtitlePropertiesPanel
+                  selectedSub={selectedSub}
+                  trackStyle={trackStyle}
+                  rightPanelWidth={propertiesPanelWidth}
+                  onResizeDragStart={(e) => handleResizeDragStart('right', e)}
+                  updateSubtitle={updateSubtitle}
+                  deleteSubtitle={deleteSubtitle}
+                  showResizeHandle={false}
+                />
+              )
+            })()}
+            {selectedClip ? (
+              <ClipPropertiesPanel
+                selectedClip={selectedClip}
+                clips={clips}
+                tracks={tracks}
+                propertiesTab={propertiesTab}
+                setPropertiesTab={setPropertiesTab}
+                showFlip={showFlip}
+                setShowFlip={setShowFlip}
+                showTransitions={showTransitions}
+                setShowTransitions={setShowTransitions}
+                showAppliedEffects={showAppliedEffects}
+                setShowAppliedEffects={setShowAppliedEffects}
+                showColorCorrection={showColorCorrection}
+                setShowColorCorrection={setShowColorCorrection}
+                resolutionCache={resolutionCache}
+                rightPanelWidth={propertiesPanelWidth}
+                updateClip={updateClip}
+                removeEffectFromClip={removeEffectFromClip}
+                updateEffectOnClip={updateEffectOnClip}
+                handleDeleteTake={handleDeleteTake}
+                setShowEffectsBrowser={setShowEffectsBrowser}
+                setI2vClipId={setI2vClipId}
+                setI2vPrompt={setI2vPrompt}
+                i2vClipId={i2vClipId}
+                isRegenerating={isRegenerating}
+                getLiveAsset={getLiveAsset}
+                getClipUrl={getClipUrl}
+                getClipResolution={getClipResolution}
+                getMaxClipDuration={getMaxClipDuration}
+                handleRegenerate={(clipId) => { const c = clips.find(x => x.id === clipId); if (c?.assetId) handleRegenerate(c.assetId, clipId) }}
+                handleCancelRegeneration={handleCancelRegeneration}
+                setClips={setClips}
+                pushUndo={pushUndo}
+                handleClipTakeChange={handleClipTakeChange}
+                setSubtitleTrackStyleIdx={setSubtitleTrackStyleIdx}
+                subtitleTrackStyleIdx={subtitleTrackStyleIdx}
+              />
+            ) : !selectedSubtitleId ? (
+              <div
+                className="bg-zinc-950 border-l border-zinc-800 flex flex-col items-center justify-center text-zinc-600 text-[12px]"
+                style={{ width: propertiesPanelWidth }}
+              >
+                <span>No clip selected</span>
+              </div>
+            ) : null}
+          </>
+        )}
+        {showAgentPanel && (
           <EditingAgentPanel
             assets={assets}
             visibleAssets={filteredAssets}
@@ -3940,79 +4003,13 @@ export function VideoEditor() {
             selectedAssetIds={selectedAssetIds}
             selectedClipIds={selectedClipIds}
             currentTime={currentTime}
-            rightPanelWidth={layout.rightPanelWidth}
+            rightPanelWidth={agentPanelWidth}
             pushUndo={pushUndo}
             addAsset={addAsset}
             setClips={setClips}
             setSelectedAssetIds={setSelectedAssetIds}
             setSelectedClipIds={setSelectedClipIds}
           />
-        ) : (
-          <>
-        {/* Subtitle properties */}
-        {selectedSubtitleId && selectedClipIds.size === 0 && (() => {
-          const selectedSub = subtitles.find(s => s.id === selectedSubtitleId)
-          if (!selectedSub) return null
-          const trackStyle = tracks[selectedSub.trackIndex]?.subtitleStyle || {}
-          return (
-            <SubtitlePropertiesPanel
-              selectedSub={selectedSub}
-              trackStyle={trackStyle}
-              rightPanelWidth={layout.rightPanelWidth}
-              onResizeDragStart={(e) => handleResizeDragStart('right', e)}
-              updateSubtitle={updateSubtitle}
-              deleteSubtitle={deleteSubtitle}
-            />
-          )
-        })()}
-        {/* Clip properties */}
-        {selectedClip ? (
-          <ClipPropertiesPanel
-            selectedClip={selectedClip}
-            clips={clips}
-            tracks={tracks}
-            propertiesTab={propertiesTab}
-            setPropertiesTab={setPropertiesTab}
-            showFlip={showFlip}
-            setShowFlip={setShowFlip}
-            showTransitions={showTransitions}
-            setShowTransitions={setShowTransitions}
-            showAppliedEffects={showAppliedEffects}
-            setShowAppliedEffects={setShowAppliedEffects}
-            showColorCorrection={showColorCorrection}
-            setShowColorCorrection={setShowColorCorrection}
-            resolutionCache={resolutionCache}
-            rightPanelWidth={layout.rightPanelWidth}
-            updateClip={updateClip}
-            removeEffectFromClip={removeEffectFromClip}
-            updateEffectOnClip={updateEffectOnClip}
-            handleDeleteTake={handleDeleteTake}
-            setShowEffectsBrowser={setShowEffectsBrowser}
-            setI2vClipId={setI2vClipId}
-            setI2vPrompt={setI2vPrompt}
-            i2vClipId={i2vClipId}
-            isRegenerating={isRegenerating}
-            getLiveAsset={getLiveAsset}
-            getClipUrl={getClipUrl}
-            getClipResolution={getClipResolution}
-            getMaxClipDuration={getMaxClipDuration}
-            handleRegenerate={(clipId) => { const c = clips.find(x => x.id === clipId); if (c?.assetId) handleRegenerate(c.assetId, clipId) }}
-            handleCancelRegeneration={handleCancelRegeneration}
-            setClips={setClips}
-            pushUndo={pushUndo}
-            handleClipTakeChange={handleClipTakeChange}
-            setSubtitleTrackStyleIdx={setSubtitleTrackStyleIdx}
-            subtitleTrackStyleIdx={subtitleTrackStyleIdx}
-          />
-        ) : !selectedSubtitleId ? (
-          <div
-            className="bg-zinc-950 border-l border-zinc-800 flex flex-col items-center justify-center text-zinc-600 text-[12px]"
-            style={{ width: layout.rightPanelWidth }}
-          >
-            <span>No clip selected</span>
-          </div>
-        ) : null}
-          </>
         )}
         </>
       )}

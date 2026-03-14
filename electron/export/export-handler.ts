@@ -7,7 +7,7 @@ import { logger } from '../logger'
 import { approvePath, validatePath } from '../path-validation'
 import { findFfmpegPath, runFfmpeg, urlToFilePath, stopExportProcess } from './ffmpeg-utils'
 import { flattenTimeline } from './timeline'
-import type { ExportClip } from './timeline'
+import type { ExportClip, FlatSegment } from './timeline'
 import type { ExportSubtitle, ExportTextOverlay } from './video-filter'
 import { buildVideoFilterGraph } from './video-filter'
 import { mixAudioToPcm } from './audio-mix'
@@ -38,8 +38,33 @@ export function registerExportHandlers(): void {
       return { error: String(err) }
     }
 
-    const segments = flattenTimeline(clips)
-    if (segments.length === 0) return { error: 'No clips to export' }
+    let segments = flattenTimeline(clips)
+    if (segments.length === 0) {
+      const maxClipEnd = clips.reduce((max, clip) => Math.max(max, clip.startTime + clip.duration), 0)
+      const maxSubtitleEnd = (subtitles ?? []).reduce((max, sub) => Math.max(max, sub.endTime), 0)
+      const maxTextEnd = (textOverlays ?? []).reduce((max, overlay) => Math.max(max, overlay.endTime), 0)
+      const fallbackDuration = Math.max(maxClipEnd, maxSubtitleEnd, maxTextEnd)
+
+      if (fallbackDuration > 0.001) {
+        logger.info(`[Export] No visual clips found, generating black background base (${fallbackDuration.toFixed(3)}s)`)
+        segments = [{
+          filePath: '',
+          type: 'gap',
+          startTime: 0,
+          duration: fallbackDuration,
+          trimStart: 0,
+          speed: 1,
+          reversed: false,
+          flipH: false,
+          flipV: false,
+          opacity: 100,
+          muted: true,
+          volume: 0,
+        } satisfies FlatSegment]
+      } else {
+        return { error: 'No clips to export' }
+      }
+    }
 
     // Verify source files exist
     for (const seg of segments) {
@@ -52,16 +77,31 @@ export function registerExportHandlers(): void {
     const ts = Date.now()
     const tmpVideo = path.join(tmpDir, `ltx-export-video-${ts}.mkv`)
     const tmpAudio = path.join(tmpDir, `ltx-export-audio-${ts}.wav`)
+    let tempFilterAssets: string[] = []
     const cleanup = () => {
       try { fs.unlinkSync(tmpVideo) } catch {}
       try { fs.unlinkSync(tmpAudio) } catch {}
+      for (const filePath of tempFilterAssets) {
+        try { fs.unlinkSync(filePath) } catch {}
+      }
+      tempFilterAssets = []
     }
 
     try {
       // STEP 1: Export video-only (simple concat, no audio complexity)
       logger.info( `[Export] Step 1: Video-only export (${segments.length} segments)`)
       {
-        const { inputs, filterScript } = buildVideoFilterGraph(segments, { width, height, fps, letterbox, subtitles, textOverlays })
+        const { inputs, filterScript, tempFiles } = buildVideoFilterGraph(segments, {
+          width,
+          height,
+          fps,
+          letterbox,
+          subtitles,
+          textOverlays,
+          tempDir: tmpDir,
+          tempPrefix: String(ts),
+        })
+        tempFilterAssets = tempFiles
 
         const filterFile = path.join(tmpDir, `ltx-filter-v-${ts}.txt`)
         fs.writeFileSync(filterFile, filterScript, 'utf8')

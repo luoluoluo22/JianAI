@@ -38,6 +38,19 @@ function escapeDrawtextText(text: string): string {
     .replace(/\n/g, '\\n')
 }
 
+function normalizeDrawtextSourceText(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\\n/g, '\n')
+}
+
+function writeDrawtextTextFile(tempDir: string, tempPrefix: string, kind: 'sub' | 'txt', index: number, text: string): string {
+  const filePath = path.join(tempDir, `ltx-drawtext-${tempPrefix}-${kind}-${index}.txt`)
+  fs.writeFileSync(filePath, normalizeDrawtextSourceText(text), 'utf8')
+  return filePath
+}
+
 function rgbComponentToHex(value: string): string {
   const numeric = Math.max(0, Math.min(255, Math.round(Number(value))))
   return numeric.toString(16).padStart(2, '0')
@@ -129,11 +142,14 @@ export function buildVideoFilterGraph(
     letterbox?: { ratio: number; color: string; opacity: number };
     subtitles?: ExportSubtitle[];
     textOverlays?: ExportTextOverlay[];
+    tempDir?: string;
+    tempPrefix?: string;
   },
-): { inputs: string[]; filterScript: string } {
-  const { width, height, fps, letterbox, subtitles, textOverlays } = opts
+): { inputs: string[]; filterScript: string; tempFiles: string[] } {
+  const { width, height, fps, letterbox, subtitles, textOverlays, tempDir, tempPrefix = String(Date.now()) } = opts
   const inputs: string[] = []
   const filterParts: string[] = []
+  const tempFiles: string[] = []
   let idx = 0
 
   for (let i = 0; i < segments.length; i++) {
@@ -212,8 +228,11 @@ export function buildVideoFilterGraph(
     for (let si = 0; si < subtitles.length; si++) {
       const sub = subtitles[si]
       const nextLabel = `sub${si}`
-      // Escape text for ffmpeg drawtext: replace special chars
-      const escapedText = escapeDrawtextText(sub.text)
+      const textFile = tempDir ? writeDrawtextTextFile(tempDir, tempPrefix, 'sub', si, sub.text) : null
+      if (textFile) {
+        tempFiles.push(textFile)
+      }
+      const escapedText = escapeDrawtextText(normalizeDrawtextSourceText(sub.text))
 
       const fontSize = Math.round(sub.style.fontSize * (height / 1080)) // scale relative to export res
       const fontColor = normalizeColor(sub.style.color, '0xFFFFFF')
@@ -236,7 +255,10 @@ export function buildVideoFilterGraph(
         boxPart = `:box=1:boxcolor=${boxColor}:boxborderw=8`
       }
 
-      const dtFilter = `drawtext=text='${escapedText}':fontsize=${fontSize}:fontcolor=${fontColor}${fontFile ? `:fontfile='${escapeDrawtextValue(fontFile)}'` : ''}:x=(w-text_w)/2:y=${yExpr}${boxPart}:enable='between(t\\,${sub.startTime.toFixed(3)}\\,${sub.endTime.toFixed(3)})'`
+      const textSource = textFile
+        ? `textfile='${escapeDrawtextValue(textFile)}':reload=0`
+        : `text='${escapedText}'`
+      const dtFilter = `drawtext=${textSource}:fontsize=${fontSize}:fontcolor=${fontColor}${fontFile ? `:fontfile='${escapeDrawtextValue(fontFile)}'` : ''}:text_align=C:x=(w-text_w)/2:y=${yExpr}${boxPart}:enable='between(t\\,${sub.startTime.toFixed(3)}\\,${sub.endTime.toFixed(3)})'`
 
       filterParts.push(`[${lastLabel}]${dtFilter}[${nextLabel}]`)
       lastLabel = nextLabel
@@ -247,7 +269,11 @@ export function buildVideoFilterGraph(
     for (let ti = 0; ti < textOverlays.length; ti++) {
       const overlay = textOverlays[ti]
       const nextLabel = `txt${ti}`
-      const escapedText = escapeDrawtextText(overlay.text)
+      const textFile = tempDir ? writeDrawtextTextFile(tempDir, tempPrefix, 'txt', ti, overlay.text) : null
+      if (textFile) {
+        tempFiles.push(textFile)
+      }
+      const escapedText = escapeDrawtextText(normalizeDrawtextSourceText(overlay.text))
       const fontSize = Math.max(12, Math.round(overlay.style.fontSize * (height / 1080)))
       const fontColor = normalizeColor(overlay.style.color, '0xFFFFFF')
       const fontFile = resolveDrawtextFontFile(overlay.style.fontFamily, overlay.style.fontWeight)
@@ -266,8 +292,16 @@ export function buildVideoFilterGraph(
           ? `(w*${(anchorX / 100).toFixed(4)}-text_w)`
           : `(w*${(anchorX / 100).toFixed(4)}-text_w/2)`
       const yExpr = `(h*${(anchorY / 100).toFixed(4)}-text_h/2)`
+      const textAlign = overlay.style.textAlign === 'left'
+        ? 'L'
+        : overlay.style.textAlign === 'right'
+          ? 'R'
+          : 'C'
 
-      let drawtext = `drawtext=text='${escapedText}':fontsize=${fontSize}:fontcolor=${fontColor}${fontFile ? `:fontfile='${escapeDrawtextValue(fontFile)}'` : ''}:x=${xExpr}:y=${yExpr}`
+      const textSource = textFile
+        ? `textfile='${escapeDrawtextValue(textFile)}':reload=0`
+        : `text='${escapedText}'`
+      let drawtext = `drawtext=${textSource}:fontsize=${fontSize}:fontcolor=${fontColor}${fontFile ? `:fontfile='${escapeDrawtextValue(fontFile)}'` : ''}:text_align=${textAlign}:x=${xExpr}:y=${yExpr}`
       if (boxColor) drawtext += `:box=1:boxcolor=${boxColor}:boxborderw=${Math.max(0, Math.round((overlay.style.strokeWidth ?? 0) + 8))}`
       if (strokeColor && (overlay.style.strokeWidth ?? 0) > 0) {
         drawtext += `:borderw=${Math.max(1, Math.round(overlay.style.strokeWidth ?? 1))}:bordercolor=${strokeColor}`
@@ -287,5 +321,5 @@ export function buildVideoFilterGraph(
     filterParts.push(`[${lastLabel}]null[outv]`)
   }
 
-  return { inputs, filterScript: filterParts.join(';\n') }
+  return { inputs, filterScript: filterParts.join(';\n'), tempFiles }
 }

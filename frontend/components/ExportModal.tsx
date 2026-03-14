@@ -311,6 +311,12 @@ export function ExportModal({ open, onClose, clips, tracks, timeline, projectNam
           }
         })
 
+      console.info('[Export] payload', {
+        exportClipCount: exportClips.length,
+        subtitleCount: subtitleData.length,
+        textOverlayCount: textOverlayData.length,
+      })
+
       setExportFrameInfo('正在启动 ffmpeg...')
 
       const result = await window.electronAPI?.exportNative({
