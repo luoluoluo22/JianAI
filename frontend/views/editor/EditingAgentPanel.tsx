@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { ChevronDown, ChevronUp, FolderOpen, Loader2, MessageSquare, Send, Settings2, Sparkles, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, FolderOpen, Loader2, MessageSquare, Plus, Send, Settings2, Sparkles, X } from 'lucide-react'
 import type { Asset, TimelineClip, Track } from '../../types/project'
 import { useAppSettings } from '../../contexts/AppSettingsContext'
 import {
@@ -37,6 +37,13 @@ interface AgentMessage {
   text: string
 }
 
+interface AgentSession {
+  id: string
+  title: string
+  messages: AgentMessage[]
+  collapsed: boolean
+}
+
 interface AgentReferenceTag {
   id: string
   kind: 'asset' | 'clip'
@@ -64,6 +71,7 @@ interface EditingAgentPanelProps {
   rightPanelWidth: number
   pushUndo: () => void
   setClips: Dispatch<SetStateAction<TimelineClip[]>>
+  setSelectedAssetIds: Dispatch<SetStateAction<Set<string>>>
   setSelectedClipIds: Dispatch<SetStateAction<Set<string>>>
 }
 
@@ -79,6 +87,22 @@ const QUICK_PROMPTS = [
   '在5秒添加标题 欢迎来到片场',
 ]
 
+function createWelcomeMessage(summary: string): AgentMessage {
+  return {
+    id: 'assistant-welcome',
+    role: 'assistant',
+    text: `时间线 Agent 已连接。\n\n${summary}`,
+  }
+}
+
+function buildSessionTitle(messages: AgentMessage[]): string {
+  const firstUserMessage = messages.find((message) => message.role === 'user')?.text.trim()
+  if (firstUserMessage) {
+    return firstUserMessage.length > 20 ? `${firstUserMessage.slice(0, 20)}...` : firstUserMessage
+  }
+  return `会话 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+}
+
 export function EditingAgentPanel({
   assets,
   visibleAssets,
@@ -90,23 +114,18 @@ export function EditingAgentPanel({
   rightPanelWidth,
   pushUndo,
   setClips,
+  setSelectedAssetIds,
   setSelectedClipIds,
 }: EditingAgentPanelProps) {
   const { settings, updateSettings } = useAppSettings()
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const initialSummary = useMemo(
-    () => `${summarizeTimelineForAgent({ assets, visibleAssets, clips, tracks, selectedClipIds, currentTime })}\n\n${summarizeAssetsForAgent({ assets, visibleAssets, clips, tracks, selectedClipIds, currentTime })}`,
-    [],
+    () => `${summarizeTimelineForAgent({ assets, visibleAssets, clips, tracks, selectedAssetIds, selectedClipIds, currentTime })}\n\n${summarizeAssetsForAgent({ assets, visibleAssets, clips, tracks, selectedAssetIds, selectedClipIds, currentTime })}`,
+    [assets, visibleAssets, clips, tracks, selectedAssetIds, selectedClipIds, currentTime],
   )
-  const [messages, setMessages] = useState<AgentMessage[]>([
-    {
-      id: 'assistant-welcome',
-      role: 'assistant',
-      text: `时间线 Agent 已连接。\n\n${initialSummary}`,
-    },
-  ])
+  const [messages, setMessages] = useState<AgentMessage[]>([createWelcomeMessage(initialSummary)])
+  const [archivedSessions, setArchivedSessions] = useState<AgentSession[]>([])
   const [input, setInput] = useState('')
-  const [referenceTags, setReferenceTags] = useState<AgentReferenceTag[]>([])
   const [lastReferencedClipIds, setLastReferencedClipIds] = useState<string[]>([])
   const [pendingIntent, setPendingIntent] = useState<PendingAgentIntent | null>(null)
   const [isRunning, setIsRunning] = useState(false)
@@ -173,6 +192,7 @@ export function EditingAgentPanel({
     visibleAssets,
     clips,
     tracks,
+    selectedAssetIds,
     selectedClipIds,
     currentTime,
     lastReferencedClipIds,
@@ -223,19 +243,29 @@ export function EditingAgentPanel({
     return lines.join('\n')
   }
 
-  const addReferenceTags = (tags: AgentReferenceTag[]) => {
-    if (tags.length === 0) return
-    setReferenceTags((prev) => {
-      const existingIds = new Set(prev.map((tag) => tag.id))
-      const next = [...prev]
-      for (const tag of tags) {
-        if (!existingIds.has(tag.id)) {
-          next.push(tag)
-          existingIds.add(tag.id)
-        }
+  const effectiveReferenceTags = selectedReferenceTags
+
+  const handleCreateSession = () => {
+    setArchivedSessions((prev) => {
+      const hasMeaningfulConversation = messages.some((message) => message.role === 'user')
+      if (!hasMeaningfulConversation) {
+        return prev
       }
-      return next
+      return [
+        {
+          id: `session-${Date.now()}`,
+          title: buildSessionTitle(messages),
+          messages,
+          collapsed: true,
+        },
+        ...prev,
+      ]
     })
+    setMessages([createWelcomeMessage(initialSummary)])
+    setInput('')
+    setLastReferencedClipIds([])
+    setPendingIntent(null)
+    setTextContextMenu(null)
   }
 
   const appendToInput = (text: string) => {
@@ -259,13 +289,13 @@ export function EditingAgentPanel({
     if (!text || isRunning) return
 
     const pendingResolution = consumePendingAgentIntent(text, pendingIntent, context)
-    const tagPrefix = buildReferencePromptPrefix(referenceTags)
+    const tagPrefix = buildReferencePromptPrefix(effectiveReferenceTags)
     const effectiveText = tagPrefix ? `${tagPrefix}\n用户指令：${pendingResolution.input}` : pendingResolution.input
 
     const userMessage: AgentMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      text: tagPrefix ? `[引用 ${referenceTags.length}] ${text}` : text,
+      text: tagPrefix ? `[引用 ${effectiveReferenceTags.length}] ${text}` : text,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -275,7 +305,7 @@ export function EditingAgentPanel({
     try {
       const provider = llmConfig.enabled ? 'llm' : 'rule'
       await persistEditingAgentDebugEntry(buildRequestDebugEntry(effectiveText, provider, clips, {
-        referenceTags: referenceTags.map((tag) => ({ kind: tag.kind, entityId: tag.entityId, label: tag.label })),
+        referenceTags: effectiveReferenceTags.map((tag) => ({ kind: tag.kind, entityId: tag.entityId, label: tag.label })),
       }))
 
       let interpretation
@@ -308,7 +338,6 @@ export function EditingAgentPanel({
         setClips(applied.clips)
         setSelectedClipIds(applied.selectedClipIds)
         setPendingIntent(null)
-        setReferenceTags([])
         await persistEditingAgentDebugEntry(buildApplyDebugEntry(
           effectiveText,
           provider,
@@ -355,7 +384,6 @@ export function EditingAgentPanel({
         setClips(applied.clips)
         setSelectedClipIds(applied.selectedClipIds)
         setPendingIntent(null)
-        setReferenceTags([])
         await persistEditingAgentDebugEntry(buildApplyDebugEntry(
           effectiveText,
           'rule',
@@ -554,16 +582,29 @@ export function EditingAgentPanel({
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">时间线智能助理</h3>
-            <p className="text-[11px] text-zinc-500">真实 AI 输出结构化 actions，再修改时间线 JSON 状态</p>
+            <h3 className="text-sm font-semibold text-white">剪辑 Agent</h3>
+            <p className="text-[11px] text-zinc-500">
+              {llmConfig.enabled ? `当前模型：${llmConfig.model}` : '当前模型：本地规则引擎'}
+            </p>
           </div>
-          <button
-            onClick={() => setShowSettings((prev) => !prev)}
-            className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white"
-            title="Agent settings"
-          >
-            <Settings2 className="h-4 w-4" />
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={handleCreateSession}
+              disabled={isRunning}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 text-[11px] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              title="新建会话"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              新建会话
+            </button>
+            <button
+              onClick={() => setShowSettings((prev) => !prev)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white"
+              title="Agent settings"
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -672,6 +713,56 @@ export function EditingAgentPanel({
       </div>
 
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {archivedSessions.length > 0 && (
+          <div className="space-y-2">
+            {archivedSessions.map((session) => (
+              <div key={session.id} className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/70">
+                <button
+                  onClick={() => setArchivedSessions((prev) => prev.map((item) => item.id === session.id ? { ...item, collapsed: !item.collapsed } : item))}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-zinc-800/70"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-medium text-zinc-200">{session.title}</div>
+                    <div className="text-[10px] text-zinc-500">{session.messages.length} 条消息</div>
+                  </div>
+                  <div className="ml-3 flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setArchivedSessions((prev) => prev.filter((item) => item.id !== session.id))
+                      }}
+                      className="rounded-md p-1 text-zinc-600 opacity-0 transition-all hover:bg-zinc-800 hover:text-red-400 group-hover:opacity-100"
+                      title="删除会话"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    {session.collapsed ? <ChevronDown className="h-4 w-4 text-zinc-500" /> : <ChevronUp className="h-4 w-4 text-zinc-500" />}
+                  </div>
+                </button>
+                {!session.collapsed && (
+                  <div className="space-y-2 border-t border-zinc-800 px-3 py-3">
+                    {session.messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`rounded-xl border px-3 py-2 whitespace-pre-wrap text-[12px] leading-5 ${
+                          message.role === 'assistant'
+                            ? 'border-zinc-800 bg-zinc-950 text-zinc-200'
+                            : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                        } select-text cursor-text`}
+                        onContextMenu={(e) => { void handleTextContextMenu(e) }}
+                      >
+                        <div className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">
+                          {message.role === 'assistant' ? 'Agent' : 'You'}
+                        </div>
+                        {message.text}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {messages.map((message) => (
           <div
             key={message.id}
@@ -693,95 +784,53 @@ export function EditingAgentPanel({
       <div className="border-t border-zinc-800 p-4">
         {(selectedAssets.length > 0 || selectedTimelineClips.length > 0) && (
           <div className="mb-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <div className="text-[11px] font-medium text-zinc-300">当前选中</div>
-              <button
-                onClick={() => addReferenceTags(selectedReferenceTags)}
-                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
-              >
-                添加引用
-              </button>
-            </div>
+            <div className="mb-2 text-[11px] font-medium text-zinc-300">当前选中</div>
             <div className="flex flex-wrap gap-2">
               {selectedAssets.map((asset) => {
-                const label = `素材库素材“${assetDisplayName(asset)}”`
                 return (
-                  <button
+                  <div
                     key={asset.id}
-                    draggable
-                    onClick={() => addReferenceTags([{
-                      id: `asset-${asset.id}`,
-                      kind: 'asset',
-                      entityId: asset.id,
-                      label,
-                    }])}
-                    onDragStart={(event) => event.dataTransfer.setData('application/x-jianai-reference', JSON.stringify([{
-                      id: `asset-${asset.id}`,
-                      kind: 'asset',
-                      entityId: asset.id,
-                      label,
-                    }] satisfies AgentReferenceTag[]))}
-                    className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-100 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/15"
-                    title="点击或拖拽到输入框"
+                    className="group inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-100"
                   >
-                    资源: {assetDisplayName(asset)}
-                  </button>
+                    <span>素材: {assetDisplayName(asset)}</span>
+                    <button
+                      onClick={() => setSelectedAssetIds((prev) => {
+                        const next = new Set(prev)
+                        next.delete(asset.id)
+                        return next
+                      })}
+                      className="rounded-full p-0.5 text-current/80 opacity-0 transition-all hover:bg-white/10 hover:text-white group-hover:opacity-100"
+                      title="取消引用"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
                 )
               })}
               {selectedTimelineClips.map((clip) => {
                 const clipName = clip.type === 'text'
                   ? clip.textStyle?.text || 'Text'
                   : clip.importedName || clip.asset?.prompt || clip.type
-                const label = `时间线片段“${clipName}”`
                 return (
-                  <button
+                  <div
                     key={clip.id}
-                    draggable
-                    onClick={() => addReferenceTags([{
-                      id: `clip-${clip.id}`,
-                      kind: 'clip',
-                      entityId: clip.id,
-                      label,
-                    }])}
-                    onDragStart={(event) => event.dataTransfer.setData('application/x-jianai-reference', JSON.stringify([{
-                      id: `clip-${clip.id}`,
-                      kind: 'clip',
-                      entityId: clip.id,
-                      label,
-                    }] satisfies AgentReferenceTag[]))}
-                    className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-100 transition-colors hover:border-emerald-400/50 hover:bg-emerald-500/15"
-                    title="点击或拖拽到输入框"
+                    className="group inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-100"
                   >
-                    片段: {clipName}
-                  </button>
+                    <span>片段: {clipName}</span>
+                    <button
+                      onClick={() => setSelectedClipIds((prev) => {
+                        const next = new Set(prev)
+                        next.delete(clip.id)
+                        return next
+                      })}
+                      className="rounded-full p-0.5 text-current/80 opacity-0 transition-all hover:bg-white/10 hover:text-white group-hover:opacity-100"
+                      title="取消引用"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
                 )
               })}
-            </div>
-          </div>
-        )}
-        {referenceTags.length > 0 && (
-          <div className="mb-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3">
-            <div className="mb-2 text-[11px] font-medium text-zinc-300">对话引用</div>
-            <div className="flex flex-wrap gap-2">
-              {referenceTags.map((tag) => (
-                <div
-                  key={tag.id}
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] ${
-                    tag.kind === 'asset'
-                      ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100'
-                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
-                  }`}
-                >
-                  <span>{tag.label}</span>
-                  <button
-                    onClick={() => setReferenceTags((prev) => prev.filter((item) => item.id !== tag.id))}
-                    className="rounded-full p-0.5 text-current/80 transition-colors hover:bg-white/10 hover:text-white"
-                    title="移除引用"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -793,16 +842,6 @@ export function EditingAgentPanel({
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault()
-            const refPayload = e.dataTransfer.getData('application/x-jianai-reference')
-            if (refPayload) {
-              try {
-                const parsed = JSON.parse(refPayload) as AgentReferenceTag[]
-                addReferenceTags(parsed)
-                return
-              } catch {
-                // Fall through to plain text.
-              }
-            }
             const text = e.dataTransfer.getData('text/plain')
             appendToInput(text)
           }}
@@ -817,7 +856,7 @@ export function EditingAgentPanel({
         />
         <div className="mt-3 flex items-center justify-between">
           <div className="text-[11px] text-zinc-500">
-            当前 {clips.length} 个片段，已选中 {selectedClipIds.size} 个，素材区选中 {selectedAssetIds.size} 个，引用 {referenceTags.length} 个
+            当前 {clips.length} 个片段，已选中 {selectedClipIds.size} 个片段，素材区选中 {selectedAssetIds.size} 个素材
           </div>
           <button
             onClick={() => { void handleSubmit(input) }}

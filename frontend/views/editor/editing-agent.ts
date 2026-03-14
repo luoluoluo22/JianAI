@@ -7,6 +7,7 @@ export interface EditingAgentContext {
   visibleAssets?: Asset[]
   clips: TimelineClip[]
   tracks: Track[]
+  selectedAssetIds: Set<string>
   selectedClipIds: Set<string>
   currentTime: number
   lastReferencedClipIds?: string[]
@@ -128,6 +129,8 @@ export function summarizeAssetsForAgent(context: EditingAgentContext): string {
     return '当前资源区没有素材。'
   }
 
+  const selectedAssets = ordered.filter((asset) => context.selectedAssetIds.has(asset.id))
+
   const counts = {
     video: ordered.filter((asset) => asset.type === 'video').length,
     image: ordered.filter((asset) => asset.type === 'image').length,
@@ -136,6 +139,9 @@ export function summarizeAssetsForAgent(context: EditingAgentContext): string {
 
   const lines = [
     `当前资源区共有 ${ordered.length} 个素材。视频 ${counts.video} 个，图片 ${counts.image} 个，音频 ${counts.audio} 个。`,
+    selectedAssets.length > 0
+      ? `当前选中 ${selectedAssets.length} 个素材：${selectedAssets.map((asset) => assetDisplayName(asset)).join('、')}。`
+      : '当前没有选中素材。',
     '素材列表：',
     ...ordered.slice(0, 16).map((asset, index) => assetLabel(asset, index)),
   ]
@@ -220,6 +226,13 @@ function resolveClipReference(input: string, context: EditingAgentContext): Clip
 function resolveAssetReference(input: string, context: EditingAgentContext): Asset | null {
   const ordered = getOrderedAssets(context)
   if (ordered.length === 0) return null
+
+  if (/选中(的)?(资源|素材|图片|图像|照片|视频|音频|音乐)/.test(input)) {
+    const selectedAssets = ordered.filter((asset) => context.selectedAssetIds.has(asset.id))
+    if (selectedAssets.length > 0) {
+      return selectedAssets[0]
+    }
+  }
 
   const typeFilter = /音频|音乐/.test(input)
     ? 'audio'

@@ -5,9 +5,25 @@ import { getLogDir, getCurrentLogFilename } from '../logging-management'
 import { logger, writeLog } from '../logger'
 
 const VALID_LOG_LEVELS = new Set(['INFO', 'WARNING', 'ERROR', 'DEBUG'])
+const MAX_AGENT_DEBUG_LOG_LINES = 1000
+const MAX_AGENT_DEBUG_LINE_LENGTH = 20_000
 
 function getEditingAgentDebugLogPath(): string {
   return path.join(getLogDir(), 'editing-agent-debug.jsonl')
+}
+
+function trimEditingAgentDebugLog(logPath: string): void {
+  if (!fs.existsSync(logPath)) {
+    return
+  }
+
+  const allLines = fs.readFileSync(logPath, 'utf-8').split('\n').filter(Boolean)
+  if (allLines.length <= MAX_AGENT_DEBUG_LOG_LINES) {
+    return
+  }
+
+  const keptLines = allLines.slice(-MAX_AGENT_DEBUG_LOG_LINES)
+  fs.writeFileSync(logPath, `${keptLines.join('\n')}\n`, 'utf-8')
 }
 
 export function registerLogHandlers(): void {
@@ -41,7 +57,10 @@ export function registerLogHandlers(): void {
   ipcMain.handle('append-agent-debug-log', async (_event, line: string) => {
     const logDir = getLogDir()
     fs.mkdirSync(logDir, { recursive: true })
-    fs.appendFileSync(getEditingAgentDebugLogPath(), `${String(line).trimEnd()}\n`, 'utf-8')
+    const logPath = getEditingAgentDebugLogPath()
+    const safeLine = String(line).trimEnd().slice(0, MAX_AGENT_DEBUG_LINE_LENGTH)
+    fs.appendFileSync(logPath, `${safeLine}\n`, 'utf-8')
+    trimEditingAgentDebugLog(logPath)
   })
 
   ipcMain.handle('get-agent-debug-log', async () => {

@@ -3939,6 +3939,7 @@ export function VideoEditor() {
             rightPanelWidth={layout.rightPanelWidth}
             pushUndo={pushUndo}
             setClips={setClips}
+            setSelectedAssetIds={setSelectedAssetIds}
             setSelectedClipIds={setSelectedClipIds}
           />
         ) : (

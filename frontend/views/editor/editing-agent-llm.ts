@@ -51,6 +51,7 @@ function buildTimelineSnapshot(context: EditingAgentContext): string {
   const payload = {
     currentTime: Number(context.currentTime.toFixed(3)),
     timelineEnd: Number(timelineEnd.toFixed(3)),
+    selectedAssetIds: [...context.selectedAssetIds],
     selectedClipIds: [...context.selectedClipIds],
     assetOrderPolicy: 'assets 数组顺序就是当前素材区可见顺序，用户说“第一张图片/第二个视频”时按这个顺序理解。',
     assets: orderedAssets.map((asset, index) => ({
@@ -63,6 +64,7 @@ function buildTimelineSnapshot(context: EditingAgentContext): string {
       resolution: asset.resolution,
       favorite: Boolean(asset.favorite),
       bin: asset.bin || null,
+      selected: context.selectedAssetIds.has(asset.id),
     })),
     tracks: context.tracks.map((track, index) => ({
       index,
