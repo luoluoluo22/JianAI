@@ -55,6 +55,14 @@ interface AgentReferenceTag {
   label: string
 }
 
+interface StoredAgentSessionState {
+  messages: AgentMessage[]
+  archivedSessions: AgentSession[]
+  lastReferencedClipIds: string[]
+}
+
+type StoredAgentSessionMap = Record<string, StoredAgentSessionState>
+
 interface TextContextMenuState {
   x: number
   y: number
@@ -109,6 +117,59 @@ function buildSessionTitle(messages: AgentMessage[]): string {
   return `会话 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
 }
 
+function getAgentSessionStorageKey(projectId: string | null): string {
+  return projectId?.trim() || '__global__'
+}
+
+function sanitizeStoredAgentMessages(value: unknown): AgentMessage[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const message = entry as Partial<AgentMessage>
+      if (message.role !== 'assistant' && message.role !== 'user') return null
+      if (typeof message.text !== 'string') return null
+      return {
+        id: typeof message.id === 'string' ? message.id : `message-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        role: message.role,
+        text: message.text,
+      }
+    })
+    .filter((message): message is AgentMessage => message !== null)
+}
+
+function sanitizeStoredArchivedSessions(value: unknown): AgentSession[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const session = entry as Partial<AgentSession>
+      return {
+        id: typeof session.id === 'string' ? session.id : `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title: typeof session.title === 'string' && session.title.trim() ? session.title : '历史会话',
+        collapsed: session.collapsed !== false,
+        messages: sanitizeStoredAgentMessages(session.messages),
+      }
+    })
+    .filter((session): session is AgentSession => session !== null && session.messages.length > 0)
+}
+
+function sanitizeStoredAgentSessionState(value: unknown): StoredAgentSessionState | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as {
+    messages?: unknown
+    archivedSessions?: unknown
+    lastReferencedClipIds?: unknown
+  }
+  return {
+    messages: sanitizeStoredAgentMessages(record.messages),
+    archivedSessions: sanitizeStoredArchivedSessions(record.archivedSessions),
+    lastReferencedClipIds: Array.isArray(record.lastReferencedClipIds)
+      ? record.lastReferencedClipIds.filter((item): item is string => typeof item === 'string')
+      : [],
+  }
+}
+
 export function EditingAgentPanel({
   assets,
   visibleAssets,
@@ -142,6 +203,7 @@ export function EditingAgentPanel({
   const [debugLogPath, setDebugLogPath] = useState('')
   const [debugEntries, setDebugEntries] = useState<EditingAgentDebugEntry[]>([])
   const [textContextMenu, setTextContextMenu] = useState<TextContextMenuState | null>(null)
+  const [sessionStateLoadedKey, setSessionStateLoadedKey] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const llmConfig: EditingAgentLlmConfig = settings.editingAgentLlm ?? DEFAULT_EDITING_AGENT_LLM_CONFIG
 
@@ -215,6 +277,71 @@ export function EditingAgentPanel({
     if (!container) return
     container.scrollTop = container.scrollHeight
   }, [messages, isRunning])
+
+  useEffect(() => {
+    const storageKey = getAgentSessionStorageKey(currentProjectId)
+    let cancelled = false
+
+    const loadStoredSessionState = async () => {
+      try {
+        const raw = await window.electronAPI.getRendererSettings()
+        const sessionMap = (raw.editingAgentSessionStateByProject ?? {}) as StoredAgentSessionMap
+        const stored = sanitizeStoredAgentSessionState(sessionMap[storageKey])
+        if (cancelled) return
+        if (stored && stored.messages.length > 0) {
+          setMessages(stored.messages)
+          setArchivedSessions(stored.archivedSessions)
+          setLastReferencedClipIds(stored.lastReferencedClipIds)
+        } else {
+          setMessages([createWelcomeMessage(initialSummary)])
+          setArchivedSessions([])
+          setLastReferencedClipIds([])
+        }
+        setPendingIntent(null)
+        setInput('')
+        setSessionStateLoadedKey(storageKey)
+      } catch {
+        if (cancelled) return
+        setMessages([createWelcomeMessage(initialSummary)])
+        setArchivedSessions([])
+        setLastReferencedClipIds([])
+        setPendingIntent(null)
+        setInput('')
+        setSessionStateLoadedKey(storageKey)
+      }
+    }
+
+    void loadStoredSessionState()
+    return () => {
+      cancelled = true
+    }
+  }, [currentProjectId])
+
+  useEffect(() => {
+    const storageKey = getAgentSessionStorageKey(currentProjectId)
+    if (sessionStateLoadedKey !== storageKey) return
+
+    const persistSessionState = async () => {
+      try {
+        const raw = await window.electronAPI.getRendererSettings()
+        const sessionMap = ((raw.editingAgentSessionStateByProject ?? {}) as StoredAgentSessionMap)
+        await window.electronAPI.saveRendererSettings({
+          editingAgentSessionStateByProject: {
+            ...sessionMap,
+            [storageKey]: {
+              messages,
+              archivedSessions,
+              lastReferencedClipIds,
+            },
+          },
+        })
+      } catch {
+        // Best-effort persistence only.
+      }
+    }
+
+    void persistSessionState()
+  }, [currentProjectId, sessionStateLoadedKey, messages, archivedSessions, lastReferencedClipIds])
 
   const context: EditingAgentContext = {
     assets,

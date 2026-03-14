@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import http from 'http'
@@ -8,7 +8,7 @@ import { logger } from '../logger'
 import { getMainWindow } from '../window'
 import { validatePath, approvePath } from '../path-validation'
 import { getProjectAssetsPath, setProjectAssetsPath } from '../app-state'
-import { renderHtmlToVideoWithChromium } from '../html-render/chromium-renderer'
+import { renderHtmlToImageWithChromium, renderHtmlToVideoWithChromium } from '../html-render/chromium-renderer'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -221,101 +221,6 @@ function wrapHtmlDocument(html: string, width: number, height: number): string {
 </html>`
 }
 
-async function ensureHtmlCaptureBackground(window: BrowserWindow): Promise<void> {
-  await window.webContents.executeJavaScript(`
-    (() => {
-      const isTransparent = (value) => !value || value === 'transparent' || value === 'rgba(0, 0, 0, 0)'
-      const htmlStyle = getComputedStyle(document.documentElement)
-      const bodyStyle = getComputedStyle(document.body)
-      document.documentElement.style.width = '100%'
-      document.documentElement.style.height = '100%'
-      document.body.style.width = '100%'
-      document.body.style.height = '100%'
-      document.body.style.minHeight = '100vh'
-      if (!document.body.style.margin) {
-        document.body.style.margin = '0'
-      }
-      document.querySelectorAll('canvas').forEach((node) => {
-        node.style.display = 'block'
-        node.style.width = '100vw'
-        node.style.height = '100vh'
-      })
-      document.querySelectorAll('svg').forEach((node) => {
-        if (!node.getAttribute('width')) {
-          node.setAttribute('width', String(window.innerWidth))
-        }
-        if (!node.getAttribute('height')) {
-          node.setAttribute('height', String(window.innerHeight))
-        }
-        node.style.display = 'block'
-      })
-      if (isTransparent(htmlStyle.backgroundColor)) {
-        document.documentElement.style.background = '#ffffff'
-      }
-      if (isTransparent(bodyStyle.backgroundColor)) {
-        document.body.style.background = '#ffffff'
-      }
-      document.documentElement.style.colorScheme = 'light'
-    })()
-  `, true)
-}
-
-async function waitForHtmlRender(window: BrowserWindow): Promise<void> {
-  await window.webContents.executeJavaScript(`
-    new Promise((resolve) => {
-      let settled = false
-      const finish = () => {
-        if (settled) return
-        settled = true
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          setTimeout(() => resolve(true), 350)
-        }))
-      }
-      const timeout = setTimeout(finish, 3000)
-      const fontReady = document.fonts?.ready ?? Promise.resolve()
-      const imageReady = Array.from(document.images || []).map((img) => (
-        img.complete
-          ? Promise.resolve()
-          : new Promise((done) => {
-              img.addEventListener('load', done, { once: true })
-              img.addEventListener('error', done, { once: true })
-            })
-      ))
-      Promise.all([fontReady, ...imageReady])
-        .then(() => {
-          clearTimeout(timeout)
-          finish()
-        })
-        .catch(() => {
-          clearTimeout(timeout)
-          finish()
-        })
-    })
-  `, true)
-}
-
-function createHtmlRenderWindow(width: number, height: number, offscreen = false): BrowserWindow {
-  return new BrowserWindow({
-    show: false,
-    width,
-    height,
-    useContentSize: true,
-    frame: false,
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    backgroundColor: '#ffffff',
-    webPreferences: {
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      backgroundThrottling: false,
-      offscreen,
-    },
-  })
-}
-
 function shouldRenderHtmlAsVideo(html: string): boolean {
   const lower = html.toLowerCase()
   return (
@@ -372,23 +277,13 @@ async function createHtmlAssetImage(
 
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const baseName = `${name}-${stamp}`
-  const pngPath = path.join(destDir, `${baseName}.png`)
   const htmlPath = path.join(destDir, `${baseName}.html`)
   const documentHtml = wrapHtmlDocument(html, width, height)
 
-  let renderWindow: BrowserWindow | null = null
-
   try {
-    renderWindow = createHtmlRenderWindow(width, height)
-
-    await renderWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(documentHtml)}`)
-    await ensureHtmlCaptureBackground(renderWindow)
-    await waitForHtmlRender(renderWindow)
     fs.writeFileSync(htmlPath, documentHtml, 'utf-8')
 
     if (shouldRenderHtmlAsVideo(documentHtml)) {
-      renderWindow.destroy()
-      renderWindow = null
       const videoResult = await createHtmlAssetVideo(htmlPath, destDir, baseName, width, height, durationSeconds)
       if (!videoResult.success) {
         return videoResult
@@ -406,14 +301,16 @@ async function createHtmlAssetImage(
       }
     }
 
-    const image = await renderWindow.webContents.capturePage({ x: 0, y: 0, width, height })
-    fs.writeFileSync(pngPath, image.toPNG())
+    const imageResult = await renderHtmlToImageWithChromium(htmlPath, destDir, baseName, width, height)
+    if (!imageResult.success) {
+      return imageResult
+    }
 
     return {
       success: true,
       mediaType: 'image',
-      path: pngPath,
-      url: pathToFileUrl(pngPath),
+      path: imageResult.path,
+      url: imageResult.url,
       htmlPath,
       width,
       height,
@@ -421,10 +318,6 @@ async function createHtmlAssetImage(
   } catch (error) {
     logger.error(`[html-asset] failed: ${error}`)
     return { success: false, error: error instanceof Error ? error.message : String(error) }
-  } finally {
-    if (renderWindow && !renderWindow.isDestroyed()) {
-      renderWindow.destroy()
-    }
   }
 }
 

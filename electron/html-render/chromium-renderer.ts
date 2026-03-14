@@ -115,12 +115,14 @@ export async function renderHtmlToVideoWithChromium(
     await page.waitForTimeout(800)
     await page.waitForTimeout(Math.max(250, Math.round(durationSeconds * 1000)))
     await page.close()
+    page = null
+    await context.close()
+    context = null
+
     const recordedVideoPath = video ? await video.path() : sourceVideoPath
     if (recordedVideoPath !== sourceVideoPath && fs.existsSync(recordedVideoPath)) {
       fs.copyFileSync(recordedVideoPath, sourceVideoPath)
     }
-    await context.close()
-    context = null
 
     if (!fs.existsSync(sourceVideoPath)) {
       return { success: false, error: 'Chromium did not produce a recorded video file.' }
@@ -177,6 +179,80 @@ export async function renderHtmlToVideoWithChromium(
       fs.rmSync(recordingDir, { recursive: true, force: true })
     } catch {
       // Best effort cleanup only.
+    }
+  }
+}
+
+export async function renderHtmlToImageWithChromium(
+  htmlPath: string,
+  destDir: string,
+  baseName: string,
+  width: number,
+  height: number,
+): Promise<
+  | { success: true; path: string; url: string; width: number; height: number }
+  | { success: false; error: string }
+> {
+  const executablePath = findChromiumExecutable()
+  if (!executablePath) {
+    return { success: false, error: 'No Chrome/Edge executable found for HTML image rendering.' }
+  }
+
+  const outputPath = path.join(destDir, `${baseName}.png`)
+  const fileUrl = pathToFileUrl(htmlPath)
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null
+  let context: Awaited<ReturnType<typeof chromium.launch>> extends infer _T ? any : never
+  let page: any = null
+
+  try {
+    logger.info(`[html-render] launching chromium screenshot executable=${executablePath}`)
+    browser = await chromium.launch({
+      executablePath,
+      headless: true,
+      args: [
+        '--disable-background-timer-throttling',
+        '--disable-renderer-backgrounding',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-features=CalculateNativeWinOcclusion,BackForwardCache',
+      ],
+    })
+
+    context = await browser.newContext({
+      viewport: { width, height },
+      screen: { width, height },
+      deviceScaleFactor: 1,
+    })
+    page = await context.newPage()
+    await page.goto(fileUrl, { waitUntil: 'load' })
+    await page.waitForTimeout(500)
+    await page.screenshot({
+      path: outputPath,
+      type: 'png',
+    })
+
+    if (!fs.existsSync(outputPath)) {
+      return { success: false, error: 'Chromium did not produce a screenshot file.' }
+    }
+
+    return {
+      success: true,
+      path: outputPath,
+      url: pathToFileUrl(outputPath),
+      width,
+      height,
+    }
+  } catch (error) {
+    logger.error(`[html-render] chromium screenshot failed: ${error}`)
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
+  } finally {
+    if (page) {
+      await page.close().catch(() => {})
+    }
+    if (context) {
+      await context.close().catch(() => {})
+    }
+    if (browser) {
+      await browser.close().catch(() => {})
     }
   }
 }
