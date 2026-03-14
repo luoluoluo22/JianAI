@@ -175,10 +175,37 @@ function normalizeAppSettings(data: Partial<AppSettings>): AppSettings {
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [rendererSettingsLoaded, setRendererSettingsLoaded] = useState(false)
   const [runtimePolicyLoaded, setRuntimePolicyLoaded] = useState(false)
   const [forceApiGenerations, setForceApiGenerations] = useState(true)
   const [backendProcessStatus, setBackendProcessStatus] = useState<BackendProcessStatus | null>(null)
   const [backendDisabled, setBackendDisabled] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadRendererSettings = async () => {
+      const legacyEditingAgentLlm = readLegacyEditingAgentLlmSettings()
+      const rendererEditingAgentLlm = await readRendererEditingAgentLlmSettings()
+      const preferredEditingAgentLlm = rendererEditingAgentLlm ?? legacyEditingAgentLlm
+      if (cancelled) {
+        return
+      }
+      if (preferredEditingAgentLlm) {
+        setSettings((prev) => ({
+          ...prev,
+          editingAgentLlm: preferredEditingAgentLlm,
+        }))
+      }
+      setRendererSettingsLoaded(true)
+    }
+
+    void loadRendererSettings()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -191,6 +218,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
         }
         setBackendDisabled(true)
         setForceApiGenerations(false)
+        setSettings((prev) => normalizeAppSettings(prev))
         setIsLoaded(true)
         setRuntimePolicyLoaded(true)
       } catch {
@@ -342,7 +370,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [backendProcessStatus, isLoaded, refreshSettings])
 
   useEffect(() => {
-    if (!isLoaded) return
+    if (!rendererSettingsLoaded) return
     const syncTimer = setTimeout(async () => {
       try {
         await window.electronAPI.saveRendererSettings({
@@ -371,7 +399,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       }
     }, 150)
     return () => clearTimeout(syncTimer)
-  }, [backendDisabled, backendProcessStatus, isLoaded, settings])
+  }, [backendDisabled, backendProcessStatus, rendererSettingsLoaded, settings])
 
   const updateSettings = useCallback((patch: Partial<AppSettings> | ((prev: AppSettings) => AppSettings)) => {
     if (typeof patch === 'function') {

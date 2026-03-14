@@ -370,7 +370,7 @@ function extractImageActionsFromText(content: string): EditingAgentAction[] {
 
   return Array.from(candidates.values())
     .sort((left, right) => left.score - right.score)
-    .slice(0, 4)
+    .slice(0, 1)
     .map(({ source, name }) => ({
       type: 'import_image_asset',
       source,
