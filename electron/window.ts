@@ -23,6 +23,7 @@ export function createWindow(): BrowserWindow {
     height: 900,
     minWidth: 1200,
     minHeight: 700,
+    center: true,
     icon: appIcon,
     webPreferences: {
       preload: preloadPath,
@@ -57,7 +58,14 @@ export function createWindow(): BrowserWindow {
 
   mainWindow.once('ready-to-show', () => {
     logger.info('[window] ready-to-show')
+    const bounds = mainWindow?.getBounds()
+    logger.info(`[window] bounds x=${bounds?.x ?? 0} y=${bounds?.y ?? 0} width=${bounds?.width ?? 0} height=${bounds?.height ?? 0}`)
+    if (mainWindow?.isMinimized()) {
+      mainWindow.restore()
+    }
+    mainWindow?.center()
     mainWindow?.show()
+    mainWindow?.focus()
   })
 
   mainWindow.on('closed', () => {

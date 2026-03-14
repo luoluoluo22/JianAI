@@ -89,6 +89,12 @@ function installAppMenu(): void {
 }
 
 appendBootLog('main:start')
+process.on('uncaughtException', (error) => {
+  appendBootLog(`main:uncaughtException ${error instanceof Error ? error.stack || error.message : String(error)}`)
+})
+process.on('unhandledRejection', (reason) => {
+  appendBootLog(`main:unhandledRejection ${reason instanceof Error ? reason.stack || reason.message : String(reason)}`)
+})
 const gotLock = app.requestSingleInstanceLock()
 appendBootLog(`main:gotLock=${gotLock}`)
 
@@ -99,11 +105,15 @@ if (!gotLock) {
   appendBootLog('main:register-handlers')
   initSessionLog()
   logAppVersion()
-
+  appendBootLog('main:registerAppHandlers')
   registerAppHandlers()
+  appendBootLog('main:registerFileHandlers')
   registerFileHandlers()
+  appendBootLog('main:registerLogHandlers')
   registerLogHandlers()
+  appendBootLog('main:registerExportHandlers')
   registerExportHandlers()
+  appendBootLog('main:registerVideoProcessingHandlers')
   registerVideoProcessingHandlers()
 
   app.on('second-instance', () => {

@@ -36,9 +36,15 @@ export function getProjectAssetsPath(): string {
   const state = readAppState()
   if (state.projectAssetsPath) {
     cachedProjectAssetsPath = path.resolve(state.projectAssetsPath)
+    if (!fs.existsSync(cachedProjectAssetsPath)) {
+      fs.mkdirSync(cachedProjectAssetsPath, { recursive: true })
+    }
     return cachedProjectAssetsPath
   }
-  const defaultPath = path.resolve(path.join(app.getPath('downloads'), 'Ltx Desktop Assets'))
+  const defaultPath = path.resolve(path.join(app.getPath('userData'), 'assets'))
+  if (!fs.existsSync(defaultPath)) {
+    fs.mkdirSync(defaultPath, { recursive: true })
+  }
   cachedProjectAssetsPath = defaultPath
   return defaultPath
 }
