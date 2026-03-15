@@ -1,285 +1,85 @@
-# 剪艾 JianAI
-
-剪艾 JianAI 是一个面向桌面端的 AI 剪辑项目。当前阶段的核心目标不是“文生视频”，而是让用户通过自然语言直接修改时间线，实现更高效的素材编排、片段移动、裁剪、转场和标题编辑。
-
-pnpm exec vite build
-构建命令： pnpm exec electron-builder --config electron-builder.local.yml --win --dir
-
-现阶段我们把产品重点收敛在：
-
-- AI 对话式剪辑
-- 时间线 JSON 状态驱动
-- 本地桌面编辑器体验
-- 可持续扩展的 Agent 执行框架
-
-图像生成、视频生成这类能力暂时不作为当前主线功能，后续会在开发计划中逐步恢复。
-
-> **当前定位**
-> 剪艾不是一个“先生成、后编辑”的演示壳子，而是一个“AI 直接参与剪辑”的桌面编辑器原型。
+# 剪艾 JianAI —— 全网首个桌面剪辑 Agent
 
 <p align="center">
-  <img src="images/video-editor.png" alt="JianAI Video Editor" width="78%">
+  <img src="images/bilibili-cover.png" alt="JianAI Bilibili Cover" width="100%">
 </p>
 
-<p align="center">
-  <img src="images/timeline-gap-fill.png" alt="JianAI Timeline" width="78%">
-</p>
+剪艾 JianAI 是一个面向桌面端的 **AI 原生视频剪辑应用**。区别于传统的“生成式 AI”玩具，剪艾的核心卖点是**“AI 真正参与剪辑操作”**。它将大语言模型（LLM）的推理能力直接接入视频时间线的底层逻辑，让用户通过**自然语言聊天**就能实现精准的素材编排、片段移动、裁剪、转场和标题编辑。
 
-## 下载与使用
+---
+
+## 🚀 核心超能力 (Superpowers)
+
+### 1. 对话即剪辑 (Chat-based Editing)
+右侧内置的 `Timeline Agent` 不只是个聊天窗口。它能实时读取当前时间线状态，并将你的自然语言指令（如“把选中的片段往后挪2秒”、“在5秒处加个标题”）转换成**结构化的剪辑动作**。通过数据驱动界面（React UI）刷新，实现毫秒级的精准执行。
+
+### 2. 原生支持小龙虾 (OpenClaw Control)
+全网首个深度适配 **OpenClaw (小龙虾)** 操控协议的剪辑软件。开放本地 HTTP 端口（47821），支持外部 Agent 或 Python 脚本远程驱动剪辑项目。真正实现了“Agent 操纵 Agent”的工业级自动化流。
+
+### 3. 软件内直出文生图 (In-app AI Generation)
+创作缺素材？不用跳出软件！「剪艾」内置了 AI 图像生成模块。只需在软件内输入提示词，生成的精美图片将直接进入素材库，生成的瞬间即可拖入时间线，打造极致的闭环创作心流。
+
+### 4. 免费接入顶级大模型 (Double Top LLMs)
+零成本白嫖最强算力！完美适配以 **DeepSeek** 和 **豆包 (Doubao)** 为代表的 OpenAI 兼容接口。只要你有 API Key，顶级 AI 马上化身为你的 24 小时后期助理。
+
+### 5. 极客定制化 (Geek & Customizable)
+基于 **Electron + React + Python (FastAPI)** 的三层架构打造。底层逻辑全透明，支持开发者根据业务需求定制垂直领域的剪辑逻辑，是打造自动化剪辑工作流的最佳原型。
+
+---
+
+## 📦 下载与使用
 
 ### 下载安装
+你可以通过以下方式获取桌面客户端：
+*   **夸克网盘 (推荐，国内下载快)**：[点击进入下载页面](https://pan.quark.cn/s/d42e266a2640)
+*   **GitHub Releases**：[点击前往 Release 页面](https://github.com/luoluoluo22/JianAI/releases)
 
-当前可以直接从 GitHub Releases 下载桌面版压缩包：
+**Release 包含：** Windows 免安装便携版 (`win-unpacked.zip`)。
+**运行步骤：** 解压 -> 找到 `剪艾 JianAI.exe` -> 双击启动。
 
-- Releases 页面：`https://github.com/luoluoluo22/JianAI/releases`
+### 快速开始
+1.  **导入素材**：将你的图片、视频、音频拖入左侧素材区。
+2.  **配置 AI**：点击 Agent 面板右上角的“设置”，填入你的 OpenAI 兼容 API（如 DeepSeek 或 豆包的地址、模型名和 Key）。
+3.  **开始聊天**：在右侧控制台尝试输入：“把第一张图片放到5秒位置”。
 
-下载步骤：
+---
 
-1. 打开 Releases 页面。
-2. 下载最新版本中的 `JianAI-win-unpacked.zip` 压缩包。
-3. 解压到任意本地目录，不要直接在压缩包内运行。
-4. 双击解压后的 `剪艾 JianAI.exe` 启动。
+## 🛠️ 技术架构
 
-### 首次使用
+项目采用**三层解耦结构**，确保了强大的 UI 表现力与复杂的逻辑处理能力：
 
-当前发布包是免本地 Python 首启下载的桌面壳版本，打开后会直接进入编辑器，不需要等待 2.9GB Python 环境初始化。
+*   **前端 (Frontend)**: React 18 + TypeScript + Tailwind CSS。负责编辑器渲染与 Agent 对话交互。
+*   **应用壳 (Electron)**: 管理应用生命周期、IPC 通信、以及 Python 后端进程的调度。
+*   **后端 (Backend)**: Python 3.12 + FastAPI。负责处理 LLM 映射逻辑、管理时间线状态锁以及执行复杂的文件处理动作。
 
-首次使用建议按这个顺序：
+---
 
-1. 导入图片、视频或音频素材到左侧素材区。
-2. 把素材拖到时间线，或者直接通过右侧 `Timeline Agent` 下达剪辑命令。
-3. 如果要启用真实 AI，在 Agent 右上角设置里填写兼容 OpenAI API 的接口地址、模型名和密钥。
+## 📖 开发者文档
 
-### AI 剪辑使用方法
+- **[CLAUDE.md](CLAUDE.md)** — 开发规范与详细架构
+- **[AGENTS.md](AGENTS.md)** — Timeline Agent 动作协议定义与扩展指南
+- **[backend/architecture.md](backend/architecture.md)** — 后端核心逻辑分析
+- **[skills/](skills/)** — 包含 OpenClaw 操控在内的典型技能包定义
 
-右侧 `Timeline Agent` 支持直接读取当前时间线和素材区状态。典型用法包括：
+---
 
-- `把第一张图片放到最后一个片段之后`
-- `把选中的片段后移2秒`
-- `给第一个片段加0.5秒淡入`
-- `在5秒添加标题 欢迎来到片场`
+## ⏳ 未来路线图 (Roadmap)
+- [ ] **语义化搜索**：通过自然语言搜索素材库。
+- [ ] **可视化补丁预览 (Patch Preview)**：执行前先看 AI 改动后的虚影，确认后再应用。
+- [ ] **自动化混剪**：一键让 Agent 根据脚本大纲自动完成初剪。
+- [ ] **生态开放**：支持插件式扩展，开发者可上传自己的“剪辑技能”。
 
-你也可以先在素材区或时间线里选中对象，再把选中内容作为引用添加到对话区，让 AI 更准确理解“这个素材”或“这个片段”。
+---
 
-### 当前发布说明
+## 🤝 致谢与声明
 
-- 当前 Release 附件为 `win-unpacked` 便携版，解压即可运行。
-- 当前版本更适合内测和功能验证。
-- 如果 Windows 弹出安全提示，属于未签名应用的正常现象，需要手动确认运行。
+本项目的底层编辑器架构及部分多媒体处理能力衍生自开源项目 [Lightricks/LTX-Desktop](https://github.com/Lightricks/LTX-Desktop)。感谢 Lightricks 团队在 AI 视频工具领域的杰出贡献。
 
-## 当前亮点
-
-### 1. AI 对话式剪辑
-
-右侧 `Timeline Agent` 可以读取当前时间线状态，把自然语言转换成结构化编辑动作，再真正修改剪辑数据，而不是只返回建议文本。
-
-当前已经支持的典型操作包括：
-
-- 选中指定片段
-- 将片段前移 / 后移
-- 调整时长
-- 修改速度
-- 添加淡入 / 淡出
-- 删除片段
-- 复制片段
-- 添加标题
-
-### 2. 时间线由结构化状态驱动
-
-项目内部不是“脚本胡乱点 UI”，而是通过时间线数据模型驱动界面变化。也就是说：
-
-- AI 先生成 `actions`
-- 执行器应用到时间线状态
-- React UI 自动刷新
-
-这种方式更适合做：
-
-- 可回放的编辑记录
-- 可调试的执行日志
-- 未来的撤销 / 重做 / patch 预览
-- 更稳定的 Agent 自动化剪辑
-
-### 3. 已接入真实 AI 推理链路
-
-当前 Agent 已支持接 OpenAI-compatible 接口，把模型返回约束成结构化 JSON，再落到本地时间线执行器。
-
-### 4. 已内置调试链路
-
-为了排查“AI 有回复但时间线没变化”这类问题，项目里已经补了调试版能力：
-
-- Agent 面板内调试日志
-- Renderer 控制台日志
-- 持久化 `jsonl` 调试日志
-
-这对后续继续做 Agent 稳定性和可解释性很关键。
-
-## 当前暂不主推的能力
-
-下面这些功能目前不是本项目的主线卖点，部分能力会被弱化、关闭，或者放到后续开发计划：
-
-- 文生视频
-- 图生视频
-- 音频生视频
-- 图像生成
-- 重生成 / Retake
-- 本地大模型推理工作流
-
-原因很直接：当前产品最有差异化的地方不是“又一个生成器”，而是“AI 真正参与剪辑操作”。
-
-## 适合谁
-
-剪艾当前更适合以下几类用户：
-
-- 想验证 AI 剪辑交互形态的产品团队
-- 需要做时间线 Agent 的开发者
-- 想把自然语言命令接入剪辑器的技术团队
-- 需要桌面端原型，而不是纯 Web demo 的团队
-
-## 当前项目状态
-
-### 已可用
-
-- 桌面端视频编辑器界面
-- 多轨时间线基础编辑
-- AI 对话面板
-- 结构化 Agent action 执行
-- 调试日志查看
-- 无本地 Python 首启下载的桌面壳构建
-
-### 正在完善
-
-- 品牌替换与中文化
-- Agent 指令覆盖面
-- 更可靠的多轮上下文理解
-- 更清晰的执行反馈
-
-### 暂未完成
-
-- 完整的安装器发布链
-- 完整的前端测试体系
-- 面向最终用户的产品化打磨
-
-## 开发路线图
-
-### 近期
-
-- 继续强化 AI 剪辑命令覆盖率
-- 增加更明确的执行预览与变更说明
-- 支持更稳定的片段引用和多轮对话
-- 提升日志可读性和错误定位效率
-
-### 中期
-
-- 支持字幕、轨道、批量操作
-- 支持“先预览 patch，再确认执行”
-- 支持更强的撤销 / 重做整合
-- 优化品牌、界面和交互一致性
-
-### 后期
-
-- 重新开放图像生成与视频生成能力
-- 统一生成与剪辑工作流
-- 形成 AI 生成 + AI 剪辑 + 手动编辑的一体化产品
-
-## 技术架构
-
-项目仍然保留三层结构：
-
-- `frontend/`：React + TypeScript 编辑器界面
-- `electron/`：Electron 主进程、IPC、文件系统与打包能力
-- `backend/`：Python / FastAPI 能力层
-
-但当前产品方向上，最核心的是前端时间线编辑器和 Agent 执行链路。
-
-```mermaid
-graph TD
-  U["用户自然语言指令"] --> A["Timeline Agent"]
-  A --> J["结构化 actions / JSON"]
-  J --> E["时间线执行器"]
-  E --> S["项目状态 / Timeline State"]
-  S --> UI["编辑器界面刷新"]
-  E --> L["调试日志 / 执行日志"]
-```
-
-## 运行与开发
-
-### 环境要求
-
-- Node.js
-- pnpm
-- `uv`
-- Git
-
-### 安装依赖
-
-```bash
-pnpm install
-```
-
-### 开发模式
-
-```bash
-pnpm dev
-```
-
-### 调试模式
-
-```bash
-pnpm dev:debug
-```
-
-### 类型检查
-
-```bash
-pnpm typecheck
-```
-
-### 后端测试
-
-```bash
-pnpm backend:test
-```
-
-## 桌面构建
-
-如果你只想构建桌面壳，不希望首启下载本地 Python 环境，可以使用当前项目里的“禁用本地后端”方案。
-
-编译产物默认不会进入 Git：
-
-- `dist/`
-- `dist-electron/`
-- `release/`
-
-## 数据与日志
-
-应用数据默认保存在：
-
-- Windows：`%LOCALAPPDATA%\JianAI\`
-- macOS：`~/Library/Application Support/JianAI/`
-- Linux：`$XDG_DATA_HOME/JianAI/`
-
-日志会写入应用数据目录下的日志文件夹。
-
-## 文档
-
-- [docs/INSTALLER.md](docs/INSTALLER.md)：安装包构建
-- [docs/TELEMETRY.md](docs/TELEMETRY.md)：匿名统计说明
-- [backend/architecture.md](backend/architecture.md)：后端架构
+**剪艾 JianAI** 在此基础上进行了深度的二次开发与重构，当前的核心研究方向在于：
+*   **Timeline Agent**：将模糊的自然语言指令精准映射为结构化时间线动作。
+*   **OpenClaw 集成**：通过本地控制协议实现外部 Agent 对专业编辑器的自动化驱动。
 
 ## 开源说明
+本仓库由 [luoluoluo22](https://github.com/luoluoluo22) 维护。欢迎提交 PR 和 Issue，我们共同探索 AI 剪辑的无限可能。
 
-本仓库当前是基于现有桌面视频生成项目的二次开发版本，已经开始转向“AI 剪辑”主线。
-
-因此你会在部分代码和底层依赖中继续看到：
-
-- `LTX`
-- `LTX API`
-- `LTX-2`
-
-这些名称目前主要代表底层模型或既有依赖，不等于当前产品品牌。
-
-## License
-
-Apache-2.0，见 [LICENSE.txt](LICENSE.txt)。
-
-第三方依赖与模型相关条款见 [NOTICES.md](NOTICES.md)。
+**License:** Apache-2.0. 见 [LICENSE.txt](LICENSE.txt)。
