@@ -1,0 +1,7 @@
+interface:
+  display_name: "OpenClaw JianAI Control"
+  short_description: "Call the running JianAI desktop app over localhost."
+  default_prompt: "Use $openclaw-jianai-control to control the running JianAI app over its local HTTP API."
+
+policy:
+  allow_implicit_invocation: true

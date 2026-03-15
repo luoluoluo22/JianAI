@@ -72,6 +72,18 @@ interface TextContextMenuState {
   target: HTMLTextAreaElement | HTMLInputElement | null
 }
 
+interface ExternalAgentCommandResult {
+  success: boolean
+  projectId: string | null
+  userText: string
+  assistantText: string
+  provider: 'llm' | 'rule' | 'unknown'
+  actionCount: number
+  referencedClipIds: string[]
+  error?: string
+  timestamp: string
+}
+
 interface EditingAgentPanelProps {
   assets: Asset[]
   visibleAssets: Asset[]
@@ -556,9 +568,34 @@ export function EditingAgentPanel({
     })
   }
 
-  const handleSubmit = async (rawText: string) => {
+  const runAgentCommand = async (rawText: string): Promise<ExternalAgentCommandResult> => {
     const text = rawText.trim()
-    if (!text || isRunning) return
+    if (!text) {
+      return {
+        success: false,
+        projectId: currentProjectId,
+        userText: rawText,
+        assistantText: '',
+        provider: 'unknown',
+        actionCount: 0,
+        referencedClipIds: [],
+        error: 'Input is empty',
+        timestamp: new Date().toISOString(),
+      }
+    }
+    if (isRunning) {
+      return {
+        success: false,
+        projectId: currentProjectId,
+        userText: text,
+        assistantText: '',
+        provider: 'unknown',
+        actionCount: 0,
+        referencedClipIds: [],
+        error: 'Agent is busy',
+        timestamp: new Date().toISOString(),
+      }
+    }
 
     const pendingResolution = consumePendingAgentIntent(text, pendingIntent, context)
     const tagPrefix = buildReferencePromptPrefix(effectiveReferenceTags)
@@ -669,6 +706,16 @@ export function EditingAgentPanel({
           text: assistantText,
         },
       ])
+      return {
+        success: true,
+        projectId: currentProjectId,
+        userText: userMessage.text,
+        assistantText,
+        provider,
+        actionCount: executableActions.length,
+        referencedClipIds: interpretation.referencedClipIds,
+        timestamp: new Date().toISOString(),
+      }
     } catch (error) {
       await persistEditingAgentDebugEntry(buildErrorDebugEntry(effectiveText, 'llm', error))
       const fallback = interpretEditingAgentInput(effectiveText, context)
@@ -727,9 +774,24 @@ export function EditingAgentPanel({
           text: `${assistantText}\n\n错误信息：${error instanceof Error ? error.message : 'Unknown error'}`,
         },
       ])
+      return {
+        success: true,
+        projectId: currentProjectId,
+        userText: userMessage.text,
+        assistantText: `${assistantText}\n\n错误信息：${error instanceof Error ? error.message : 'Unknown error'}`,
+        provider: 'rule',
+        actionCount: executableActions.length,
+        referencedClipIds: fallback.referencedClipIds,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      }
     } finally {
       setIsRunning(false)
     }
+  }
+
+  const handleSubmit = async (rawText: string) => {
+    await runAgentCommand(rawText)
   }
 
   const handleTextContextMenu = async (
@@ -885,6 +947,29 @@ export function EditingAgentPanel({
     })
     setTextContextMenu(null)
   }
+
+  useEffect(() => {
+    const bridge = {
+      runCommand: async (input: string) => {
+        return await runAgentCommand(input)
+      },
+      getState: () => ({
+        available: true,
+        currentProjectId,
+        isRunning,
+        llmEnabled: llmConfig.enabled,
+        model: llmConfig.enabled ? llmConfig.model : 'local-rule-engine',
+        messageCount: messages.length,
+      }),
+    }
+    window.__JIANAI_EXTERNAL_AGENT__ = bridge
+
+    return () => {
+      if (window.__JIANAI_EXTERNAL_AGENT__ === bridge) {
+        delete window.__JIANAI_EXTERNAL_AGENT__
+      }
+    }
+  }, [currentProjectId, isRunning, llmConfig.enabled, llmConfig.model, messages.length, runAgentCommand])
 
   return (
     <div

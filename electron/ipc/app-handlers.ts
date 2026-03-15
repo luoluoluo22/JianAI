@@ -7,6 +7,8 @@ import { getBackendHealthStatus, getBackendUrl, getAuthToken, getAdminToken, sta
 import { getMainWindow } from '../window'
 import { getAnalyticsState, setAnalyticsEnabled, sendAnalyticsEvent } from '../analytics'
 import { isLocalBackendDisabled } from '../config'
+import { readRendererSettings, writeRendererSettings } from '../renderer-settings'
+import { getExternalControlSettings } from '../external-control-server'
 
 function getModelsPath(): string {
   const modelsPath = path.join(app.getPath('userData'), 'models')
@@ -14,32 +16,6 @@ function getModelsPath(): string {
     fs.mkdirSync(modelsPath, { recursive: true })
   }
   return modelsPath
-}
-
-function getRendererSettingsPath(): string {
-  return path.join(app.getPath('userData'), 'renderer_settings.json')
-}
-
-function readRendererSettings(): Record<string, unknown> {
-  const settingsPath = getRendererSettingsPath()
-  try {
-    if (!fs.existsSync(settingsPath)) {
-      return {}
-    }
-    return JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>
-  } catch {
-    return {}
-  }
-}
-
-function writeRendererSettings(patch: Record<string, unknown>): Record<string, unknown> {
-  const settingsPath = getRendererSettingsPath()
-  const nextValue = {
-    ...readRendererSettings(),
-    ...patch,
-  }
-  fs.writeFileSync(settingsPath, JSON.stringify(nextValue, null, 2), 'utf-8')
-  return nextValue
 }
 
 function getSetupStatus(settingsPath: string): { needsSetup: boolean; needsLicense: boolean } {
@@ -126,6 +102,10 @@ export function registerAppHandlers(): void {
 
   ipcMain.handle('save-renderer-settings', (_event, patch: Record<string, unknown>) => {
     return writeRendererSettings(patch)
+  })
+
+  ipcMain.handle('get-external-control-info', () => {
+    return getExternalControlSettings()
   })
 
   ipcMain.handle('check-first-run', () => {

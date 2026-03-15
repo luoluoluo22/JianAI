@@ -5,6 +5,7 @@ import path from 'path'
 import { setupCSP } from './csp'
 import { registerExportHandlers } from './export/export-handler'
 import { stopExportProcess } from './export/ffmpeg-utils'
+import { startExternalControlServer, stopExternalControlServer } from './external-control-server'
 import { registerAppHandlers } from './ipc/app-handlers'
 import { registerFileHandlers } from './ipc/file-handlers'
 import { registerLogHandlers } from './ipc/log-handlers'
@@ -137,6 +138,7 @@ if (!gotLock) {
     appendBootLog('main:whenReady')
     setupCSP()
     installAppMenu()
+    startExternalControlServer()
     appendBootLog('main:createWindow')
     createWindow()
     initAutoUpdater()
@@ -164,6 +166,7 @@ if (!gotLock) {
   app.on('before-quit', () => {
     appendBootLog('main:before-quit')
     stopExportProcess()
+    void stopExternalControlServer()
     stopPythonBackend()
   })
 }

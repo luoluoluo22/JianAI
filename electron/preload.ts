@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDownloadsPath: (): Promise<string> => ipcRenderer.invoke('get-downloads-path'),
   getRendererSettings: (): Promise<Record<string, unknown>> => ipcRenderer.invoke('get-renderer-settings'),
   saveRendererSettings: (patch: Record<string, unknown>): Promise<Record<string, unknown>> => ipcRenderer.invoke('save-renderer-settings', patch),
+  getExternalControlInfo: (): Promise<{ enabled: boolean; port: number; token: string }> => ipcRenderer.invoke('get-external-control-info'),
   // Project assets
   copyToProjectAssets: (srcPath: string, projectId: string): Promise<{ success: boolean; path?: string; url?: string; error?: string }> =>
     ipcRenderer.invoke('copy-to-project-assets', srcPath, projectId),
@@ -194,6 +195,7 @@ declare global {
       getDownloadsPath: () => Promise<string>
       getRendererSettings: () => Promise<Record<string, unknown>>
       saveRendererSettings: (patch: Record<string, unknown>) => Promise<Record<string, unknown>>
+      getExternalControlInfo: () => Promise<{ enabled: boolean; port: number; token: string }>
       copyToProjectAssets: (srcPath: string, projectId: string) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>
       createHtmlAsset: (projectId: string, payload: { html: string; width: number; height: number; name: string; duration?: number }) => Promise<{ success: boolean; mediaType?: 'image' | 'video'; path?: string; url?: string; htmlPath?: string; thumbnailPath?: string; thumbnailUrl?: string; width?: number; height?: number; error?: string }>
       importImageToProjectAssets: (projectId: string, payload: { source: string; name?: string }) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>

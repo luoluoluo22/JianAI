@@ -11,7 +11,32 @@ interface BackendHealthStatus {
   exitCode?: number | null
 }
 
+interface JianaiExternalAgentState {
+  available: boolean
+  currentProjectId: string | null
+  isRunning: boolean
+  llmEnabled: boolean
+  model: string
+  messageCount: number
+}
+
+interface JianaiExternalAgentResult {
+  success: boolean
+  projectId: string | null
+  userText: string
+  assistantText: string
+  provider: 'llm' | 'rule' | 'unknown'
+  actionCount: number
+  referencedClipIds: string[]
+  error?: string
+  timestamp: string
+}
+
 interface Window {
+  __JIANAI_EXTERNAL_AGENT__?: {
+    runCommand: (input: string) => Promise<JianaiExternalAgentResult>
+    getState: () => JianaiExternalAgentState
+  }
   electronAPI: {
     getBackend: () => Promise<{ url: string; token: string }>
     getModelsPath: () => Promise<string>
@@ -36,6 +61,7 @@ interface Window {
     getDownloadsPath: () => Promise<string>
     getRendererSettings: () => Promise<Record<string, unknown>>
     saveRendererSettings: (patch: Record<string, unknown>) => Promise<Record<string, unknown>>
+    getExternalControlInfo: () => Promise<{ enabled: boolean; port: number; token: string }>
     copyToProjectAssets: (srcPath: string, projectId: string) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>
     createHtmlAsset: (projectId: string, payload: { html: string; width: number; height: number; name: string; duration?: number }) => Promise<{ success: boolean; mediaType?: 'image' | 'video'; path?: string; url?: string; htmlPath?: string; thumbnailPath?: string; thumbnailUrl?: string; width?: number; height?: number; error?: string }>
     importImageToProjectAssets: (projectId: string, payload: { source: string; name?: string }) => Promise<{ success: boolean; path?: string; url?: string; error?: string }>
